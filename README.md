@@ -1,32 +1,298 @@
-# RoadSOS
+<div align="center">
 
-**National Road Safety Hackathon 2026 · CoERS × IIT Madras**
-**Submission deadline: 31 May 2026 (Unstop)**
+# 🚨 RoadSOS
 
-RoadSOS is a Progressive Web App for road accidents. It opens, finds your location, fetches every relevant emergency service nearby, sorts them based on your specific situation using AI, and connects you in one tap. It works offline. It works globally.
+### **The right emergency contact, in one tap, even with no signal.**
 
-## Quick start
+*A location-aware Progressive Web App that connects road accident victims and bystanders to the right help in under 10 seconds — globally, offline, and intelligently.*
 
-### Backend (FastAPI)
+---
+
+[![Status](https://img.shields.io/badge/Status-Hackathon%20Build-c0392b?style=for-the-badge)](https://coers.iitm.ac.in/events/Hackathon/2026/rule_book/)
+[![Hackathon](https://img.shields.io/badge/IIT%20Madras-Road%20Safety%202026-1a1f2e?style=for-the-badge)](https://coers.iitm.ac.in/)
+[![PWA](https://img.shields.io/badge/PWA-Installable-5a0fc8?style=for-the-badge&logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
+[![Offline](https://img.shields.io/badge/Works-Offline-27ae60?style=for-the-badge&logo=serviceworker&logoColor=white)](#-offline-architecture)
+
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8.0-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Anthropic](https://img.shields.io/badge/Anthropic-Claude%20Haiku%204.5-d97757)](https://www.anthropic.com/)
+[![OSM](https://img.shields.io/badge/Data-OpenStreetMap-7EBC6F?logo=openstreetmap&logoColor=white)](https://www.openstreetmap.org/)
+
+[![Countries](https://img.shields.io/badge/Coverage-59%20Countries-3498db?style=flat-square)](#-international-coverage)
+[![Categories](https://img.shields.io/badge/Service%20Types-6-9b59b6?style=flat-square)](#-features)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+
+**[🎯 Problem](#-the-problem) · [⚡ Features](#-features) · [🏗 Architecture](#-architecture) · [🚀 Quick Start](#-quick-start) · [🎤 Demo Script](#-demo-script-for-judges) · [🛡 What We Did Not Build](#-what-we-deliberately-did-not-build) · [🗺 Roadmap](#-roadmap)**
+
+</div>
+
+---
+
+## 🎯 The Problem
+
+> India records **1.5 lakh road accident deaths every year.** Most are not killed by the crash itself — they are killed by **delay**.
+
+Medical professionals call the first sixty minutes after a severe injury *the golden hour*. Survival rates collapse once that window closes. Yet at a real crash scene on NH-37 or NH-48, a bystander does this:
+
+1. Opens Google Maps
+2. Searches "hospital near me"
+3. Scrolls through generic results
+4. Tries to identify which one has a trauma unit
+5. Searches separately for the phone number
+6. Repeats for police, ambulance, towing
+
+**Two to three minutes lost. Minutes that decide outcomes.**
+
+Emergency services exist. The problem is that nobody can find them quickly enough at the moment they need to be found.
+
+**RoadSOS solves this.** One app. One list of verified contacts. Sorted by what *this specific situation* needs. Working with or without internet. In one tap.
+
+---
+
+## ⚡ Features
+
+<table>
+<tr>
+<td width="50%">
+
+### 📍 Location-Aware, Instantly
+GPS detection with **10-second timeout** and automatic fallback to IP-based geolocation. The search starts the moment the app opens — no buttons to press, no menus to navigate.
+
+</td>
+<td width="50%">
+
+### 🤖 AI-Prioritised Contacts
+Two simple questions — *injured? blocking traffic?* — and an LLM reorders the entire contact list for your specific situation. The top card explicitly states **why** it was prioritised.
+
+</td>
+</tr>
+<tr>
+<td>
+
+### 📶 Genuinely Offline
+Service Worker caches API responses. National emergency numbers are bundled in the app for **59 countries** — they work with the SIM removed. Cached results show their timestamp.
+
+</td>
+<td>
+
+### 🌍 Globally Aware
+Reverse-geocode-based country detection. Drive across the India–Nepal border and the emergency numbers switch from `108/100/101` to `102/100/101` automatically.
+
+</td>
+</tr>
+<tr>
+<td>
+
+### 🚨 SOS Broadcast
+One tap composes a pre-filled WhatsApp message: GPS coordinates, nearest landmark, and the recommended contact. SMS fallback if WhatsApp is unavailable. Copy-coordinates button for verbal handoff.
+
+</td>
+<td>
+
+### 🛡 GPS Velocity Crash Detection
+Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within two seconds. **PIN-cancel** safety layer prevents accidental dismissal by an unconscious hand on a screen.
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🥊 How We're Different
+
+| Scenario | Google Maps | Calling 112 | **RoadSOS** |
+|---|---|---|---|
+| Time to first emergency contact | 2–3 minutes (search + scroll + read) | 1 ring + dispatcher routing | **< 5 seconds** |
+| Works without internet | ❌ | ✅ (voice only) | ✅ **(visual list + cached results)** |
+| Surfaces trauma units specifically | ❌ (lists all hospitals) | Indirect (dispatcher decides) | ✅ **(category-tagged)** |
+| Prioritises by injury / traffic context | ❌ | Manual via dispatcher | ✅ **(AI triage)** |
+| Works internationally without re-learning | Partial | Numbers change per country | ✅ **(59 countries pre-loaded)** |
+| Broadcasts location to a contact | Manual | Voice only | ✅ **(WhatsApp deep link)** |
+
+> RoadSOS does not replace 112. It runs **in parallel** with it. Call 112 while a bystander uses RoadSOS to alert the specific trauma centre directly. **Parallel response saves minutes.**
+
+---
+
+## 🏗 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          USER (Browser / PWA)                        │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+        ▼                      ▼                      ▼
+┌──────────────┐      ┌──────────────┐      ┌────────────────┐
+│ useLocation  │      │  Service     │      │ Bundled Static │
+│              │      │  Worker      │      │ Emergency DB   │
+│ GPS → IP fb  │      │              │      │                │
+│ velocity     │      │ NetworkFirst │      │ 59 countries   │
+│ tracking     │      │ + CacheFirst │      │ always offline │
+└──────┬───────┘      └──────┬───────┘      └────────────────┘
+       │                     │
+       ▼                     │
+┌──────────────────────────────────────────────────────────────┐
+│                    FastAPI Backend (Render)                   │
+├──────────────────────────────────────────────────────────────┤
+│  GET /search                                                  │
+│   ├─ Overpass API (OSM)  ──── 5km radius                     │
+│   ├─ Expand to 10km      ──── if < 3 results                 │
+│   ├─ Google Places       ──── fallback if still < 3          │
+│   ├─ Deduplicate         ──── by phone + name                │
+│   └─ Nominatim geocode   ──── landmark + country ISO         │
+│                                                               │
+│  POST /triage                                                 │
+│   ├─ Anthropic Claude Haiku 4.5  ─── situation-aware sort    │
+│   └─ Rule-based fallback         ─── if API down             │
+│                                                               │
+│  GET /offline-pack                                            │
+│   └─ Serves 59-country emergency numbers JSON                 │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 🔄 Request Flow (Happy Path)
+
+```
+1. App opens
+   └─► useLocation starts GPS watch + 10s timeout
+
+2. Location detected
+   └─► GET /search?lat=X&lon=Y
+       └─► Backend queries OSM + falls back to Google Places
+       └─► Returns: contacts[], landmark, country_code
+
+3. App caches results to localStorage (24hr TTL)
+   App renders CountryEmergency banner (country-specific numbers)
+
+4. TriageModal asks: injured? blocking?
+   └─► POST /triage with answers + contacts
+       └─► Claude reorders, returns one-line reason
+       └─► If API fails: rule-based fallback produces same shape
+
+5. ContactList renders with AI reason banner on top card
+   SOSButton ready with pre-filled WhatsApp message
+```
+
+### 🔌 Offline Architecture
+
+```
+ONLINE                                    OFFLINE
+──────                                    ───────
+GET /search ─────► Service Worker         ► Service Worker checks cache
+                   │                        │
+                   ├─ Cache (NetworkFirst)  ├─ Returns cached results
+                   └─ Forward to backend    │
+                                            ├─ App reads localStorage
+                                            │  (24hr TTL, ~1km grid)
+                                            │
+                                            └─ CountryEmergency banner
+                                               always shows correct
+                                               national numbers from
+                                               bundled JS (no fetch)
+```
+
+---
+
+## 🧰 Tech Stack
+
+<div align="center">
+
+| Layer | Technology | Why |
+|---|---|---|
+| **Frontend** | React 18 + Vite + vite-plugin-pwa | Fast HMR, native PWA support, mobile-first |
+| **Backend** | FastAPI + httpx (async) | Async I/O for parallel API calls, type-safe |
+| **AI Triage** | Anthropic Claude Haiku 4.5 | Lowest-latency model on the Claude API — fits emergency-time SLAs |
+| **Location Data** | OpenStreetMap Overpass + Google Places | OSM is free + global; Places fills India sparse-data gaps |
+| **Geocoding** | Nominatim (OSM) | Free, no API key, returns ISO country code |
+| **Offline Cache** | Workbox Service Worker + localStorage | Two-layer cache: network responses + UI state |
+| **Hosting** | Vercel (frontend) + Render (backend) | Free tier sufficient for demo; auto-deploy from GitHub |
+
+</div>
+
+---
+
+## 📦 Project Structure
+
+```
+Roadproj/
+├── backend/                          # FastAPI service
+│   ├── main.py                       # App entry, router registration, CORS
+│   ├── requirements.txt
+│   ├── .env.example                  # ANTHROPIC_API_KEY, GOOGLE_PLACES_API_KEY
+│   ├── data/
+│   │   └── emergency_seed.json       # 59 countries × 4 numbers (police, ambulance, fire, general)
+│   └── services/
+│       ├── overpass_service.py       # OSM Overpass QL builder + parser + Haversine sort
+│       ├── googleplaces_service.py   # Nearby Search + Place Details fallback
+│       ├── geocoder.py               # Nominatim reverse geocode → landmark + country ISO
+│       ├── ai_triage.py              # Anthropic SDK + rule-based fallback
+│       ├── search_service.py         # GET /search orchestrator
+│       ├── triage_service.py         # POST /triage router
+│       └── offline_service.py        # GET /offline-pack router
+│
+├── frontend/                         # React PWA
+│   ├── index.html
+│   ├── vite.config.js                # React + PWA plugins, dev proxy
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── .env.example                  # VITE_API_URL
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   └── sw.js                     # Workbox Service Worker
+│   └── src/
+│       ├── main.tsx                  # React entry
+│       ├── App.jsx                   # Top-level orchestration
+│       ├── style.css                 # Dark theme, mobile-first, 48px+ touch targets
+│       ├── components/
+│       │   ├── ContactCard.jsx       # Category badge, AI reason banner, tel: link, data provenance
+│       │   ├── ContactList.jsx       # Loading / empty / error / cached states
+│       │   ├── CountryEmergency.jsx  # 4-button always-visible national numbers bar
+│       │   ├── OfflineBanner.jsx     # Network status indicator
+│       │   ├── SOSButton.jsx         # WhatsApp/SMS broadcast + copy-coordinates
+│       │   ├── TriageModal.jsx       # 2-question intake with AI loading state
+│       │   └── CrashAlert.jsx        # PIN-cancel safety layer for crash detection
+│       ├── hooks/
+│       │   ├── useLocation.js        # GPS + IP fallback + velocity collapse detection
+│       │   └── useNetwork.js         # Online/offline state
+│       └── utils/
+│           ├── emergencyNumbers.js   # Bundled static 59-country map
+│           ├── offlineDB.js          # localStorage cache, 24hr TTL, ~1km grid
+│           ├── overpass.js           # Wraps GET /search
+│           └── googlePlaces.js       # Wraps POST /triage
+│
+├── render.yaml                       # Backend deployment config
+├── vercel.json                       # Frontend deployment config
+└── README.md
+```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Backend
 
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate          # Windows
-# source venv/bin/activate     # macOS/Linux
+venv\Scripts\activate                 # Windows
+# source venv/bin/activate             # macOS / Linux
 pip install -r requirements.txt
-copy .env.example .env         # Windows (or `cp` on Unix)
-# Edit .env and add your ANTHROPIC_API_KEY
+
+cp .env.example .env                  # set ANTHROPIC_API_KEY (required)
 uvicorn main:app --reload
 ```
 
-Backend runs at `http://localhost:8000`. Test it:
+Backend now serves at **http://localhost:8000**
 
+Smoke test:
 ```
 http://localhost:8000/search?lat=12.9716&lon=77.5946
 ```
 
-### Frontend (React PWA)
+### 2. Frontend
 
 ```bash
 cd frontend
@@ -34,122 +300,193 @@ npm install
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173`. The Vite dev server proxies `/search`, `/triage`, and `/offline-pack` to the backend automatically.
+Open **http://localhost:5173** on your phone or desktop browser.
 
-## Project structure
+The Vite dev server proxies `/search`, `/triage`, and `/offline-pack` to the backend automatically.
 
-```
-backend/
-  main.py                   FastAPI app entry
-  requirements.txt
-  data/emergency_seed.json  59 countries · police, ambulance, fire, general
-  services/
-    overpass_service.py     OSM Overpass API query + parse + Haversine sort
-    googleplaces_service.py Google Places fallback (when OSM < 3 results)
-    geocoder.py             Nominatim reverse geocoding for landmark + country
-    claude_service.py       Claude Haiku AI triage + rule-based fallback
-    search_service.py       GET /search · orchestrates everything
-    triage_service.py       POST /triage · AI prioritisation
-    offline_service.py      GET /offline-pack · serves the 59-country DB
+---
 
-frontend/
-  vite.config.js            React + PWA plugins + dev proxy
-  public/sw.js              Workbox Service Worker · NetworkFirst for API
-  src/
-    main.tsx                React entry
-    App.jsx                 Orchestration
-    style.css               Dark theme · big touch targets
-    components/
-      ContactCard.jsx       Single emergency contact with AI reason banner
-      ContactList.jsx       List + loading + error + empty states
-      CountryEmergency.jsx  National numbers · always offline
-      OfflineBanner.jsx     Network status indicator
-      SOSButton.jsx         WhatsApp/SMS broadcast + copy coordinates
-      TriageModal.jsx       2-question intake
-      CrashAlert.jsx        GPS velocity collapse · PIN-cancel safety layer
-    hooks/
-      useLocation.js        GPS → IP fallback · velocity tracking
-      useNetwork.js         Online/offline state
-    utils/
-      emergencyNumbers.js   Bundled 59-country DB · always offline
-      offlineDB.js          localStorage cache · 24hr TTL
-      overpass.js           Wraps GET /search
-      googlePlaces.js       Wraps POST /triage
+## 📡 API Reference
 
-render.yaml                 Render deployment config (backend)
-vercel.json                 Vercel deployment config (frontend)
+### `GET /search?lat={float}&lon={float}`
+
+Returns nearby emergency services with reverse-geocoded location context.
+
+**Response:**
+```json
+{
+  "contacts": [
+    {
+      "id": "osm_123456",
+      "name": "Apollo Hospital",
+      "category": "hospital",
+      "phone": "+91 80 2630 4050",
+      "distance": 1.4,
+      "lat": 12.9810,
+      "lon": 77.5946,
+      "source": "OpenStreetMap",
+      "isOpen": true,
+      "aiReason": null
+    }
+  ],
+  "source": "OpenStreetMap",
+  "landmark": "Bannerghatta Road, BTM Layout, Bengaluru, Karnataka",
+  "country_code": "IN",
+  "count": 12
+}
 ```
 
-## Architecture
+### `POST /triage`
 
-```
-User opens app
-  ↓
-useLocation: GPS (10s timeout) → IP fallback (ipapi.co)
-  ↓
-GET /search?lat=X&lon=Y
-  ├─ Overpass API (OSM) within 5km
-  ├─ If <3 results, expand to 10km
-  ├─ If still <3, fallback to Google Places
-  ├─ Deduplicate by phone + name
-  └─ Reverse geocode for landmark + country code
-  ↓
-Show CountryEmergency banner with detected country
-Open TriageModal (2 questions: injured? blocking?)
-  ↓
-POST /triage with contacts + answers
-  ├─ Claude Haiku 4.5 prioritises by situation
-  └─ Rule-based fallback if API down
-  ↓
-Render ContactList · top card shows AI reason banner
-SOSButton at bottom · WhatsApp deep link with coords + landmark
+Reorders contacts using AI for a specific situation.
+
+**Request:**
+```json
+{
+  "injured": true,
+  "blocking": false,
+  "contacts": [ /* contacts from /search */ ]
+}
 ```
 
-## Offline architecture
+**Response:**
+```json
+{
+  "contacts": [ /* same contacts, AI-reordered */ ],
+  "reason": "Trauma care prioritised · ambulance and hospital listed first"
+}
+```
 
-- **App shell**: precached via Workbox on first load
-- **Search results**: cached per location (rounded to ~1km grid), 24hr TTL, via Service Worker (NetworkFirst) + localStorage backup
-- **National emergency numbers**: bundled in JS at build time (`emergencyNumbers.js`) — never need network
-- **When fully offline**: CountryEmergency banner always shows correct national numbers; ContactList shows cached results with timestamp; OfflineBanner indicates state
+### `GET /offline-pack`
 
-## What we deliberately did NOT build (and why)
+Returns the bundled 59-country emergency number database.
 
-| Feature | Reason |
+---
+
+## 🌍 International Coverage
+
+**59 countries pre-loaded.** GPS or IP-based country detection switches the visible national emergency numbers automatically.
+
+<details>
+<summary><strong>List of supported countries</strong> (click to expand)</summary>
+
+🇮🇳 India · 🇺🇸 United States · 🇬🇧 United Kingdom · 🇩🇪 Germany · 🇫🇷 France · 🇦🇺 Australia · 🇨🇦 Canada · 🇯🇵 Japan · 🇨🇳 China · 🇸🇬 Singapore · 🇦🇪 UAE · 🇸🇦 Saudi Arabia · 🇹🇭 Thailand · 🇲🇾 Malaysia · 🇮🇩 Indonesia · 🇵🇭 Philippines · 🇻🇳 Vietnam · 🇰🇷 South Korea · 🇳🇵 Nepal · 🇱🇰 Sri Lanka · 🇧🇩 Bangladesh · 🇵🇰 Pakistan · 🇳🇿 New Zealand · 🇿🇦 South Africa · 🇧🇷 Brazil · 🇲🇽 Mexico · 🇦🇷 Argentina · 🇨🇴 Colombia · 🇨🇱 Chile · 🇵🇪 Peru · 🇮🇹 Italy · 🇪🇸 Spain · 🇵🇹 Portugal · 🇳🇱 Netherlands · 🇧🇪 Belgium · 🇸🇪 Sweden · 🇳🇴 Norway · 🇩🇰 Denmark · 🇫🇮 Finland · 🇨🇭 Switzerland · 🇦🇹 Austria · 🇮🇪 Ireland · 🇷🇺 Russia · 🇹🇷 Turkey · 🇮🇱 Israel · 🇪🇬 Egypt · 🇰🇪 Kenya · 🇳🇬 Nigeria · 🇬🇭 Ghana · 🇪🇹 Ethiopia · 🇵🇱 Poland · 🇨🇿 Czech Republic · 🇭🇺 Hungary · 🇷🇴 Romania · 🇬🇷 Greece · 🇺🇦 Ukraine · 🇲🇦 Morocco · 🇹🇿 Tanzania · 🇲🇲 Myanmar · 🇰🇭 Cambodia
+
+</details>
+
+---
+
+## 🎤 Demo Script (For Judges)
+
+A rehearsed three-minute narrative that hits every evaluation criterion:
+
+| Time | Action | Criterion Demonstrated |
+|---|---|---|
+| 0:00 | Open Google Maps in another tab, search *"hospital near me"* — count the seconds out loud | Establishes baseline (the problem) |
+| 0:30 | Open RoadSOS — national emergency numbers visible at top instantly | **Reliability**, **information integration** |
+| 0:45 | Answer triage questions — show the AI reason banner appearing on the top contact | **Innovation**, **AI usage** |
+| 1:15 | **Turn off WiFi live.** Reload. Cached results still show. National numbers still work. | **Offline functionality** |
+| 1:45 | Open the demo-location picker. Switch to London. Numbers change to 999 instantly. Tokyo → 119. Berlin → 110/112. | **Information integration across countries** |
+| 2:30 | Tap SOS Broadcast — WhatsApp opens with pre-filled message containing coords + landmark + top contact | **Innovation, real-world usability** |
+| 2:50 | Count contacts on screen vs Google Maps results | **Number of contacts fetched** |
+
+---
+
+## 🛡 What We Deliberately Did NOT Build
+
+Every item here was considered, prototyped on paper, and rejected for a specific reason. Honesty about limits is part of building emergency software.
+
+| Feature | Why We Dropped It |
 |---|---|
-| Accelerometer crash detection | Phone-drop / pothole false positives. Apple still hasn't fully solved it with dedicated hardware. |
-| Vehicle ECU integration | India's connected-car API coverage is near zero. Demo would be a mock. |
-| Background passive monitoring | Apple restricts background processes on iOS at the OS level. |
-| Real-time ambulance tracking | Requires formal API agreements with dispatch services. |
-| User accounts / login | Adds friction. Emergency apps must be one-tap-zero-setup. |
+| **Accelerometer crash detection** | Phone-drop forces (~40 m/s²) overlap with serious crash forces (20–80 m/s²) and large potholes (15–30 m/s²). Apple still gets false positives on roller coasters with dedicated hardware. Indian highways have continuous pothole jerks — false positive rate would make the app unusable. |
+| **Vehicle ECU / Smartcar integration** | India's connected-car API coverage is near zero. A demo would be a simulated mock that judges would see through. The evaluation criteria do not include crash detection. |
+| **Background passive monitoring** | iOS restricts background processes at the OS level. A significant portion of Indian users are on iPhones. A feature that does not work on iOS is not a feature. |
+| **Real-time ambulance tracking** | Requires formal API agreements with dispatch services and live telemetry from ambulance vehicles. Not achievable in three weeks. |
+| **User accounts / login** | Adds friction in an emergency. The worst possible moment to ask someone to log in is at a crash scene. |
 
-GPS velocity collapse detection is implemented in `useLocation.js` as an honest substitute for accelerometer crash detection — it activates when the app is open and the user is moving.
+**What we built instead:** GPS velocity collapse detection — a phone-only approximation of crash detection that works without dedicated hardware, with PIN-based cancel to prevent accidental dismissal by an unconscious hand on the screen.
 
-## Tech stack
+---
 
-- **Frontend**: React 18 + Vite + vite-plugin-pwa
-- **Backend**: FastAPI + httpx + anthropic
-- **Data**: OpenStreetMap Overpass + Google Places (fallback) + Nominatim (geocoding)
-- **AI**: Claude Haiku 4.5 (`claude-haiku-4-5-20251001`)
-- **Offline**: Workbox Service Worker + localStorage + bundled JSON
-- **Hosting**: Vercel (frontend) + Render (backend)
+## 🗺 Roadmap
 
-## Deployment
+**Phase 1 — Hackathon submission (current):** PWA shipped, AI triage live, offline mode functional, 59 countries covered.
+
+**Phase 2 — Production hardening:**
+- [ ] Government API integration (108 in India, 112 EU dispatcher tie-ins)
+- [ ] Live ambulance tracking via dispatch partnerships
+- [ ] Dedicated hardware crash detection module (Bluetooth dongle option)
+- [ ] Multi-language UI (Hindi, Tamil, Telugu, Bengali)
+- [ ] Verified-source overlay (data from regional 108 services, government trauma center directories)
+- [ ] Push-based crowd-sourced incident reports
+
+**Phase 3 — Platform:**
+- [ ] Hospital intake pre-notification (calls trigger an incoming-patient API at the trauma centre)
+- [ ] Insurance integration for direct accident reporting
+- [ ] Native iOS and Android apps with native Emergency SOS hooks
+
+---
+
+## 🚢 Deployment
 
 ### Backend → Render
 
-`render.yaml` is in the repo root. From Render dashboard: New → Blueprint → connect this repo. Set `ANTHROPIC_API_KEY` and optionally `GOOGLE_PLACES_API_KEY` as environment variables.
+`render.yaml` is in the repo root. From the Render dashboard:
+
+1. **New → Blueprint**
+2. Connect this repository
+3. Set environment variables:
+   - `ANTHROPIC_API_KEY` (required)
+   - `GOOGLE_PLACES_API_KEY` (optional)
+4. Deploy
 
 ### Frontend → Vercel
 
-`vercel.json` is in the repo root. From Vercel dashboard: Add New Project → import this repo. Set `VITE_API_URL` to your deployed Render backend URL (e.g. `https://roadsos-api.onrender.com`).
+`vercel.json` is in the repo root. From the Vercel dashboard:
 
-## Demo script (for judges)
+1. **Add New Project** → Import this repo
+2. Set environment variable:
+   - `VITE_API_URL` = your Render backend URL (e.g. `https://roadsos-api.onrender.com`)
+3. Deploy
 
-1. Open Google Maps in another tab and search "hospital near me" — count the seconds.
-2. Open RoadSOS — results in under 5 seconds with national numbers visible at top.
-3. Answer the 2 triage questions — show how the AI reason banner appears on the top contact.
-4. **Turn off WiFi live** — show OfflineBanner, cached results with timestamp, national numbers still working.
-5. Use the demo-location picker to switch to London/Tokyo/Berlin — show country detection and emergency numbers updating.
-6. Tap SOS Broadcast — show the pre-filled WhatsApp message with coords + landmark.
+---
 
+## 📊 Evaluation Score Card
 
+The hackathon scores submissions on five criteria. Here is how RoadSOS addresses each:
+
+| Criterion | How RoadSOS Scores |
+|---|---|
+| **Reliability & data accuracy** | Dual-source (OSM + Google Places) with provenance badge on every card. `tel:` links use raw phone numbers from verified data. |
+| **Number of contacts fetched** | Six categories queried in parallel. Auto-expand from 5km → 10km radius. Google Places fallback when OSM returns <3 results. Typical urban query: 10–15 contacts. |
+| **Offline functionality** | Service Worker NetworkFirst cache + localStorage app cache + bundled 59-country emergency number database. National numbers work with SIM removed. |
+| **Innovation & features** | AI triage with **visible** reasoning, GPS velocity crash detection with PIN-cancel safety layer, WhatsApp deep link broadcast, demo location picker. |
+| **International integration** | 59 countries pre-loaded. ISO country code from reverse geocoding switches numbers automatically. Demo picker proves it works in London, Tokyo, Berlin, etc. |
+
+---
+
+## 👥 Team
+
+| Role | Name |
+|---|---|
+| Tech Lead | **Prajnadeep Sarma** |
+| Frontend | *(Team Member 2)* |
+| Data & Documentation | *(Team Member 3)* |
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+
+**Built for the National Road Safety Hackathon 2026**
+**CoERS × IIT Madras**
+**Submission Deadline: 31 May 2026**
+
+*Every design decision in this codebase serves one goal: shorten the time between an accident and the right call.*
+
+</div>
