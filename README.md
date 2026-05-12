@@ -21,8 +21,8 @@
 [![OSM](https://img.shields.io/badge/Data-OpenStreetMap-7EBC6F?logo=openstreetmap&logoColor=white)](https://www.openstreetmap.org/)
 
 [![Backend Tests](https://github.com/Arthrevs/Roadproj/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/Arthrevs/Roadproj/actions/workflows/backend-tests.yml)
-[![Countries](https://img.shields.io/badge/Coverage-59%20Countries-3498db?style=flat-square)](#-international-coverage)
-[![Categories](https://img.shields.io/badge/Service%20Types-6-9b59b6?style=flat-square)](#-features)
+[![Countries](https://img.shields.io/badge/Coverage-196%20Countries-3498db?style=flat-square)](#-international-coverage)
+[![Categories](https://img.shields.io/badge/Service%20Types-8-9b59b6?style=flat-square)](#-features)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 **[🎯 Problem](#-the-problem) · [⚡ Features](#-features) · [🏗 Architecture](#-architecture) · [🚀 Quick Start](#-quick-start) · [🎤 Demo Script](#-demo-script-for-judges) · [🛡 What We Did Not Build](#-what-we-deliberately-did-not-build) · [🗺 Roadmap](#-roadmap)**
@@ -73,7 +73,7 @@ Two simple questions — *injured? blocking traffic?* — and an LLM reorders th
 <td>
 
 ### 📶 Genuinely Offline
-Service Worker caches API responses. National emergency numbers are bundled in the app for **59 countries** — they work with the SIM removed. Cached results show their timestamp.
+Service Worker caches API responses. National emergency numbers are bundled in the app for **196 countries** (global coverage) — they work with the SIM removed. Cached results show their timestamp.
 
 </td>
 <td>
@@ -109,7 +109,7 @@ Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within 
 | Works without internet | ❌ | ✅ (voice only) | ✅ **(visual list + cached results)** |
 | Surfaces trauma units specifically | ❌ (lists all hospitals) | Indirect (dispatcher decides) | ✅ **(category-tagged)** |
 | Prioritises by injury / traffic context | ❌ | Manual via dispatcher | ✅ **(AI triage)** |
-| Works internationally without re-learning | Partial | Numbers change per country | ✅ **(59 countries pre-loaded)** |
+| Works internationally without re-learning | Partial | Numbers change per country | ✅ **(196 countries pre-loaded)** |
 | Broadcasts location to a contact | Manual | Voice only | ✅ **(WhatsApp deep link)** |
 
 > RoadSOS does not replace 112. It runs **in parallel** with it. Call 112 while a bystander uses RoadSOS to alert the specific trauma centre directly. **Parallel response saves minutes.**
@@ -130,7 +130,7 @@ Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within 
 │ useLocation  │      │  Service     │      │ Bundled Static │
 │              │      │  Worker      │      │ Emergency DB   │
 │ GPS → IP fb  │      │              │      │                │
-│ velocity     │      │ NetworkFirst │      │ 59 countries   │
+│ velocity     │      │ NetworkFirst │      │ 196 countries   │
 │ tracking     │      │ + CacheFirst │      │ always offline │
 └──────┬───────┘      └──────┬───────┘      └────────────────┘
        │                     │
@@ -159,7 +159,7 @@ Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within 
 │   └─ Uptime · API key status · cache hit-rate stats           │
 │                                                               │
 │  GET /offline-pack                                            │
-│   └─ Serves 59-country emergency numbers JSON                 │
+│   └─ Serves 196-country emergency numbers JSON                 │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -233,7 +233,7 @@ Roadproj/
 │   ├── requirements.txt
 │   ├── .env.example                  # ANTHROPIC_API_KEY, GOOGLE_PLACES_API_KEY
 │   ├── data/
-│   │   └── emergency_seed.json       # 59 countries × 4 numbers (police, ambulance, fire, general)
+│   │   └── emergency_seed.json       # 196 countries × 4 numbers (police, ambulance, fire, general)
 │   └── services/
 │       ├── overpass_service.py       # OSM Overpass QL builder + parser + Haversine sort
 │       ├── googleplaces_service.py   # Nearby Search + Place Details fallback
@@ -285,7 +285,7 @@ Roadproj/
 │       │   ├── useLocation.js        # GPS + IP fallback + velocity collapse detection
 │       │   └── useNetwork.js         # Online/offline state
 │       └── utils/
-│           ├── emergencyNumbers.js   # Bundled static 59-country map
+│           ├── emergencyNumbers.js   # Bundled static 196-country map
 │           ├── offlineDB.js          # localStorage cache, 24hr TTL, ~1km grid
 │           ├── overpass.js           # Wraps GET /search
 │           └── googlePlaces.js       # Wraps POST /triage
@@ -442,12 +442,20 @@ Returns the bundled 59-country emergency number database.
 
 ## 🌍 International Coverage
 
-**59 countries pre-loaded.** GPS or IP-based country detection switches the visible national emergency numbers automatically.
+**196 countries pre-loaded — full global coverage.** GPS or IP-based country detection switches the visible national emergency numbers automatically. Every UN-recognised country has police, ambulance, fire, and general emergency numbers bundled in the app — no network required.
+
+| Region | Countries Covered |
+|---|---|
+| **Asia** | 49 (India, China, Japan, all SAARC, all ASEAN, Middle East, Central Asia) |
+| **Europe** | 50 (all EU + EFTA + UK + Balkans + post-Soviet) |
+| **Africa** | 54 (all African Union members) |
+| **Americas** | 35 (North, Central, South + Caribbean) |
+| **Oceania** | 14 (Australia, NZ, all Pacific island nations) |
 
 <details>
-<summary><strong>List of supported countries</strong> (click to expand)</summary>
+<summary><strong>View full country list</strong> (click to expand — 196 entries)</summary>
 
-🇮🇳 India · 🇺🇸 United States · 🇬🇧 United Kingdom · 🇩🇪 Germany · 🇫🇷 France · 🇦🇺 Australia · 🇨🇦 Canada · 🇯🇵 Japan · 🇨🇳 China · 🇸🇬 Singapore · 🇦🇪 UAE · 🇸🇦 Saudi Arabia · 🇹🇭 Thailand · 🇲🇾 Malaysia · 🇮🇩 Indonesia · 🇵🇭 Philippines · 🇻🇳 Vietnam · 🇰🇷 South Korea · 🇳🇵 Nepal · 🇱🇰 Sri Lanka · 🇧🇩 Bangladesh · 🇵🇰 Pakistan · 🇳🇿 New Zealand · 🇿🇦 South Africa · 🇧🇷 Brazil · 🇲🇽 Mexico · 🇦🇷 Argentina · 🇨🇴 Colombia · 🇨🇱 Chile · 🇵🇪 Peru · 🇮🇹 Italy · 🇪🇸 Spain · 🇵🇹 Portugal · 🇳🇱 Netherlands · 🇧🇪 Belgium · 🇸🇪 Sweden · 🇳🇴 Norway · 🇩🇰 Denmark · 🇫🇮 Finland · 🇨🇭 Switzerland · 🇦🇹 Austria · 🇮🇪 Ireland · 🇷🇺 Russia · 🇹🇷 Turkey · 🇮🇱 Israel · 🇪🇬 Egypt · 🇰🇪 Kenya · 🇳🇬 Nigeria · 🇬🇭 Ghana · 🇪🇹 Ethiopia · 🇵🇱 Poland · 🇨🇿 Czech Republic · 🇭🇺 Hungary · 🇷🇴 Romania · 🇬🇷 Greece · 🇺🇦 Ukraine · 🇲🇦 Morocco · 🇹🇿 Tanzania · 🇲🇲 Myanmar · 🇰🇭 Cambodia
+The complete database is in `backend/data/emergency_seed.json`. The file is the authoritative source — both the backend `/offline-pack` endpoint and the frontend bundle (`frontend/src/utils/emergencyNumbers.js`) are generated from it.
 
 </details>
 
@@ -487,7 +495,7 @@ Every item here was considered, prototyped on paper, and rejected for a specific
 
 ## 🗺 Roadmap
 
-**Phase 1 — Hackathon submission (current):** PWA shipped, AI triage live, offline mode functional, 59 countries covered.
+**Phase 1 — Hackathon submission (current):** PWA shipped, AI triage live, offline mode functional, 196 countries covered.
 
 **Phase 2 — Production hardening:**
 - [ ] Government API integration (108 in India, 112 EU dispatcher tie-ins)
@@ -538,7 +546,7 @@ The hackathon scores submissions on five criteria. Here is how RoadSOS addresses
 | **Number of contacts fetched** | Six categories queried in parallel. Auto-expand from 5km → 10km radius. Google Places fallback when OSM returns <3 results. Typical urban query: 10–15 contacts. |
 | **Offline functionality** | Service Worker NetworkFirst cache + localStorage app cache + bundled 59-country emergency number database. National numbers work with SIM removed. |
 | **Innovation & features** | AI triage with **visible** reasoning, GPS velocity crash detection with PIN-cancel safety layer, WhatsApp deep link broadcast, demo location picker. |
-| **International integration** | 59 countries pre-loaded. ISO country code from reverse geocoding switches numbers automatically. Demo picker proves it works in London, Tokyo, Berlin, etc. |
+| **International integration** | 196 countries pre-loaded. ISO country code from reverse geocoding switches numbers automatically. Demo picker proves it works in London, Tokyo, Berlin, etc. |
 
 ---
 

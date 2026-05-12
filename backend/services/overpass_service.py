@@ -1,8 +1,14 @@
 """OpenStreetMap Overpass API integration.
 
-Queries six categories of emergency-relevant services around a coordinate,
-parses results, computes great-circle distance, applies cache, and returns a
-distance-sorted list of normalised contact objects.
+Queries eight categories of emergency-relevant services around a coordinate
+(hospital, police, ambulance, fire-station-as-ambulance, repair, tyre,
+**towing**, **showroom**), parses results, computes great-circle distance,
+applies cache, and returns a distance-sorted list of normalised contact
+objects.
+
+Category coverage is aligned with the IIT Madras Road Safety Hackathon 2026
+"Key Aspects for Coders to Include" — specifically: police, hospitals,
+ambulance services, towing services, puncture shops (tyre), and showrooms.
 """
 from __future__ import annotations
 
@@ -31,10 +37,17 @@ CATEGORY_MAP: list[tuple[tuple[str, str], str]] = [
     (("emergency", "ambulance_station"), "ambulance"),
     (("amenity", "ambulance_station"), "ambulance"),
     (("amenity", "fire_station"), "ambulance"),
+    # Towing — checked BEFORE car_repair so a repair shop that also tows
+    # is classified correctly as towing.
+    (("service:vehicle:recovery", "yes"), "towing"),
+    (("service:vehicle:tow", "yes"), "towing"),
+    (("amenity", "vehicle_recovery"), "towing"),
     (("shop", "car_repair"), "repair"),
     (("amenity", "car_repair"), "repair"),
     (("shop", "tyres"), "tyre"),
     (("shop", "tyre"), "tyre"),
+    (("shop", "car"), "showroom"),
+    (("shop", "car_parts"), "showroom"),
 ]
 
 
@@ -72,10 +85,19 @@ def build_overpass_query(lat: float, lon: float, radius: int) -> str:
   node["amenity"="ambulance_station"](around:{radius},{c});
   node["amenity"="fire_station"](around:{radius},{c});
   way["amenity"="fire_station"](around:{radius},{c});
+  node["service:vehicle:recovery"="yes"](around:{radius},{c});
+  way["service:vehicle:recovery"="yes"](around:{radius},{c});
+  node["service:vehicle:tow"="yes"](around:{radius},{c});
+  way["service:vehicle:tow"="yes"](around:{radius},{c});
+  node["amenity"="vehicle_recovery"](around:{radius},{c});
   node["shop"="car_repair"](around:{radius},{c});
   way["shop"="car_repair"](around:{radius},{c});
   node["amenity"="car_repair"](around:{radius},{c});
   node["shop"="tyres"](around:{radius},{c});
+  way["shop"="tyres"](around:{radius},{c});
+  node["shop"="car"](around:{radius},{c});
+  way["shop"="car"](around:{radius},{c});
+  node["shop"="car_parts"](around:{radius},{c});
 );
 out body center;
 >;

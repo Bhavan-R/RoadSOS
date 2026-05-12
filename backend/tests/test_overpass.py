@@ -47,6 +47,21 @@ class TestClassifyElement:
     def test_tyres(self):
         assert classify_element({"shop": "tyres"}) == "tyre"
 
+    def test_towing_recovery_service(self):
+        assert classify_element({"service:vehicle:recovery": "yes"}) == "towing"
+
+    def test_towing_tow_service(self):
+        assert classify_element({"service:vehicle:tow": "yes"}) == "towing"
+
+    def test_vehicle_recovery_amenity(self):
+        assert classify_element({"amenity": "vehicle_recovery"}) == "towing"
+
+    def test_car_showroom(self):
+        assert classify_element({"shop": "car"}) == "showroom"
+
+    def test_car_parts(self):
+        assert classify_element({"shop": "car_parts"}) == "showroom"
+
     def test_unknown(self):
         assert classify_element({"amenity": "cafe"}) is None
 
@@ -158,7 +173,21 @@ class TestBuildOverpassQuery:
         assert "77.5946" in q
         assert "5000" in q
 
-    def test_query_includes_six_categories(self):
+    def test_query_includes_all_required_categories(self):
         q = build_overpass_query(0, 0, 5000)
-        for tag_value in ["hospital", "police", "ambulance_station", "fire_station", "car_repair", "tyres"]:
-            assert tag_value in q
+        # Rulebook explicitly lists: police, hospitals, ambulance, towing,
+        # puncture (tyre), and showrooms. All must be in the query.
+        required = [
+            "hospital",
+            "police",
+            "ambulance_station",
+            "fire_station",
+            "car_repair",
+            "tyres",
+            "service:vehicle:recovery",
+            "service:vehicle:tow",
+            "vehicle_recovery",
+            "shop\"=\"car",  # showroom
+        ]
+        for tag_value in required:
+            assert tag_value in q, f"missing {tag_value} in Overpass query"
