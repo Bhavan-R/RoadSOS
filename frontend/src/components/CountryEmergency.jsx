@@ -1,11 +1,16 @@
 import React from 'react';
+import { guardedTelDial } from '../utils/demoMode';
 
 export default function CountryEmergency({ numbers }) {
   if (!numbers) return null;
   const { country, police, ambulance, fire, general } = numbers;
 
   const Button = ({ label, num, icon }) => (
-    <a className="country-emergency__btn" href={`tel:${num}`}>
+    <a
+      className="country-emergency__btn"
+      href={`tel:${num}`}
+      onClick={(e) => guardedTelDial(e, num, label)}
+    >
       <span className="country-emergency__icon">{icon}</span>
       <span className="country-emergency__num">{num}</span>
       <span className="country-emergency__label">{label}</span>

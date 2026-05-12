@@ -13,6 +13,8 @@ import TriageModal from './components/TriageModal';
 import OfflineBanner from './components/OfflineBanner';
 import CrashAlert from './components/CrashAlert';
 import { requestMotionPermission } from './hooks/useLocation';
+import { DEMO_MODE } from './utils/demoMode';
+import { startBackendWarmup } from './utils/backendWarmup';
 
 const DEMO_LOCATIONS = [
   { label: 'Use my GPS', lat: null, lon: null },
@@ -30,6 +32,12 @@ export default function App() {
     onCrashDetected: () => setCrashOpen(true),
   });
   const isOnline = useNetwork();
+
+  // Wake up the Render backend immediately on app load to avoid 30-60s
+  // cold-start delays during a judging demo.
+  useEffect(() => {
+    startBackendWarmup();
+  }, []);
 
   const activeLocation = useMemo(() => {
     const demo = DEMO_LOCATIONS[demoIdx];
@@ -112,17 +120,30 @@ export default function App() {
         <div className="app__brand">
           <span className="app__logo">🚨</span>
           <span className="app__title">RoadSOS</span>
+          {DEMO_MODE && <span className="demo-badge" title="Calls are simulated. Add ?demo=0 to enable real dialing.">🧪 DEMO</span>}
         </div>
-        <select
-          className="demo-picker"
-          value={demoIdx}
-          onChange={(e) => setDemoIdx(Number(e.target.value))}
-          aria-label="Demo location"
-        >
-          {DEMO_LOCATIONS.map((d, i) => (
-            <option key={i} value={i}>{d.label}</option>
-          ))}
-        </select>
+        <div className="app__header-actions">
+          {DEMO_MODE && (
+            <button
+              type="button"
+              className="test-crash-btn"
+              onClick={() => setCrashOpen(true)}
+              title="Manually trigger the crash alert for demonstration"
+            >
+              🧪 Test Crash
+            </button>
+          )}
+          <select
+            className="demo-picker"
+            value={demoIdx}
+            onChange={(e) => setDemoIdx(Number(e.target.value))}
+            aria-label="Demo location"
+          >
+            {DEMO_LOCATIONS.map((d, i) => (
+              <option key={i} value={i}>{d.label}</option>
+            ))}
+          </select>
+        </div>
       </header>
 
       <OfflineBanner isOnline={isOnline} />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { speakText, buildDispatchText, cancelSpeech } from '../utils/speechUtils';
 import { startAlarm, stopAlarm } from '../utils/alarmUtils';
+import { safeAutoDial, guardedTelDial, DEMO_MODE } from '../utils/demoMode';
 
 const CHOOSE_SECONDS = 10;
 const AUTO_SECONDS   = 4;
@@ -79,8 +80,10 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
     setSpeaking(true);
     speakText(text).finally(() => setSpeaking(false));
 
+    // Demo mode: shows a toast instead of placing a real emergency call.
+    // Production (?demo=0): dials the actual number.
     setTimeout(() => {
-      window.location.href = `tel:${callNumber}`;
+      safeAutoDial(callNumber, 'Ambulance');
     }, 1200);
 
     onConfirm?.();
@@ -256,17 +259,29 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
 
         <div className="crash-alert__manual-calls">
           {numbers?.ambulance && (
-            <a className="crash-call-btn crash-call-btn--ambulance" href={`tel:${numbers.ambulance}`}>
+            <a
+              className="crash-call-btn crash-call-btn--ambulance"
+              href={`tel:${numbers.ambulance}`}
+              onClick={(e) => guardedTelDial(e, numbers.ambulance, 'Ambulance')}
+            >
               🚑 Ambulance · {numbers.ambulance}
             </a>
           )}
           {numbers?.police && (
-            <a className="crash-call-btn crash-call-btn--police" href={`tel:${numbers.police}`}>
+            <a
+              className="crash-call-btn crash-call-btn--police"
+              href={`tel:${numbers.police}`}
+              onClick={(e) => guardedTelDial(e, numbers.police, 'Police')}
+            >
               👮 Police · {numbers.police}
             </a>
           )}
           {numbers?.general && numbers.general !== numbers.ambulance && (
-            <a className="crash-call-btn crash-call-btn--general" href={`tel:${numbers.general}`}>
+            <a
+              className="crash-call-btn crash-call-btn--general"
+              href={`tel:${numbers.general}`}
+              onClick={(e) => guardedTelDial(e, numbers.general, 'Emergency')}
+            >
               📟 General · {numbers.general}
             </a>
           )}

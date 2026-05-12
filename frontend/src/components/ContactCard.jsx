@@ -1,4 +1,5 @@
 import React from 'react';
+import { guardedTelDial } from '../utils/demoMode';
 
 const CATEGORY_LABELS = {
   hospital: 'Hospital',
@@ -7,6 +8,7 @@ const CATEGORY_LABELS = {
   towing: 'Towing',
   repair: 'Repair',
   tyre: 'Tyre',
+  showroom: 'Showroom',
 };
 
 export default function ContactCard({ contact, isTop }) {
@@ -38,7 +40,11 @@ export default function ContactCard({ contact, isTop }) {
       </div>
 
       {callHref ? (
-        <a href={callHref} className="call-button">
+        <a
+          href={callHref}
+          className="call-button"
+          onClick={(e) => guardedTelDial(e, phone.replace(/\s+/g, ''), name)}
+        >
           <span aria-hidden="true">📞</span> Call {phone}
         </a>
       ) : (
