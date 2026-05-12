@@ -7,9 +7,12 @@ const CRASH_SPEED_FROM_KMH = 25;   // was travelling at ≥ this speed
 const CRASH_SPEED_TO_KMH   = 5;    // came to ≤ this speed
 
 // ─── Accelerometer crash detection ──────────────────────────────────────────
-// 3.5 G = significant frontal impact (potholes rarely exceed 2 G)
-const CRASH_G_THRESHOLD = 3.5;
-const CRASH_COOLDOWN_MS = 12_000;  // suppress duplicate alerts for 12 s
+// Accelerometer is a CONFIRMATION signal only — it never fires alone.
+// Reason: a thrown or dropped phone easily hits 3.5 G, creating false alarms.
+// We only use the accel spike to confirm what GPS velocity already suspects.
+const CRASH_G_THRESHOLD  = 3.5;   // G-force that counts as a spike
+const ACCEL_CONFIRM_MS   = 4_000; // accel must agree with GPS within this window
+const CRASH_COOLDOWN_MS  = 12_000;
 
 function mpsToKmh(mps) { return mps * 3.6; }
 
@@ -48,10 +51,12 @@ export function useLocation({ onCrashDetected } = {}) {
   const [error, setError]         = useState(null);
   const [loading, setLoading]     = useState(true);
 
-  const speedHistoryRef   = useRef([]);
-  const watchIdRef        = useRef(null);
-  const locationRef       = useRef(null);   // always-current location for callbacks
-  const crashFiredRef     = useRef(false);  // de-duplicate alerts
+  const speedHistoryRef      = useRef([]);
+  const watchIdRef           = useRef(null);
+  const locationRef          = useRef(null);    // always-current location for callbacks
+  const crashFiredRef        = useRef(false);   // de-duplicate alerts
+  const gpsCollapseTimeRef   = useRef(null);    // timestamp of last GPS velocity collapse
+  const accelSpikeTimeRef    = useRef(null);    // timestamp of last accelerometer spike
 
   // Keep locationRef in sync
   useEffect(() => { locationRef.current = location; }, [location]);
@@ -79,7 +84,15 @@ export function useLocation({ onCrashDetected } = {}) {
     const newest = recent[recent.length - 1];
     if (oldest.speedKmh >= CRASH_SPEED_FROM_KMH && newest.speedKmh <= CRASH_SPEED_TO_KMH) {
       speedHistoryRef.current = [];
-      fireCrash('gps_velocity');
+      gpsCollapseTimeRef.current = Date.now();
+
+      // Check if accelerometer already spiked within the confirmation window
+      const accelTime = accelSpikeTimeRef.current;
+      if (accelTime && (Date.now() - accelTime) <= ACCEL_CONFIRM_MS) {
+        fireCrash('gps+accel');   // both signals agree → high confidence
+      } else {
+        fireCrash('gps_velocity'); // GPS alone → still trigger (original behaviour)
+      }
     }
   }, [fireCrash]);
 
@@ -95,7 +108,16 @@ export function useLocation({ onCrashDetected } = {}) {
       const gForce = magnitude / 9.81;
 
       if (gForce > CRASH_G_THRESHOLD) {
-        fireCrash('accelerometer');
+        // Record spike time — but do NOT fire alone.
+        // A throw or drop reaches 3.5 G easily. We only confirm if GPS
+        // velocity has already collapsed within ACCEL_CONFIRM_MS.
+        accelSpikeTimeRef.current = Date.now();
+
+        const gpsTime = gpsCollapseTimeRef.current;
+        if (gpsTime && (Date.now() - gpsTime) <= ACCEL_CONFIRM_MS) {
+          fireCrash('gps+accel');  // GPS already collapsed → confirmed
+        }
+        // else: accel spike recorded, waiting for GPS to confirm
       }
     };
 
