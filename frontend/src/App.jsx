@@ -12,6 +12,7 @@ import SOSButton from './components/SOSButton';
 import TriageModal from './components/TriageModal';
 import OfflineBanner from './components/OfflineBanner';
 import CrashAlert from './components/CrashAlert';
+import { requestMotionPermission } from './hooks/useLocation';
 
 const DEMO_LOCATIONS = [
   { label: 'Use my GPS', lat: null, lon: null },
@@ -100,6 +101,11 @@ export default function App() {
   const numbers = getEmergencyNumbers(countryCode);
   const topContact = searchData?.contacts?.[0];
 
+  // Request iOS motion permission on first meaningful interaction
+  const handleMotionPermissionOnce = useCallback(() => {
+    requestMotionPermission();
+  }, []);
+
   return (
     <div className="app">
       <header className="app__header">
@@ -136,6 +142,12 @@ export default function App() {
           <div className="landmark">📍 {searchData.landmark}</div>
         )}
 
+        <div className="section-divider">
+          <span className="section-divider__label">
+            Nearby services — towing · repair · hospital pre-notify
+          </span>
+        </div>
+
         <ContactList
           contacts={searchData?.contacts}
           loading={searchLoading}
@@ -155,6 +167,7 @@ export default function App() {
         location={activeLocation}
         landmark={searchData?.landmark}
         topContact={topContact}
+        onFirstTap={handleMotionPermissionOnce}
       />
 
       <TriageModal
@@ -168,6 +181,9 @@ export default function App() {
         open={crashOpen}
         onConfirm={() => setCrashOpen(false)}
         onCancel={() => setCrashOpen(false)}
+        numbers={numbers}
+        location={activeLocation}
+        landmark={searchData?.landmark}
       />
     </div>
   );

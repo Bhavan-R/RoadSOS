@@ -92,28 +92,40 @@ body {
   font-weight: 500;
 }
 
-/* Country emergency */
+/* Country emergency — CALL FIRST banner */
 .country-emergency {
-  background: linear-gradient(135deg, var(--accent), var(--accent-bright));
-  padding: 16px 20px;
+  background: linear-gradient(135deg, #8b0000, var(--accent-bright));
+  padding: 14px 20px 16px;
   color: #fff;
 }
 
-.country-emergency__title {
+.country-emergency__header {
+  margin-bottom: 12px;
+}
+
+.country-emergency__title-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.country-emergency__call-first {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.country-emergency__country {
   font-size: 13px;
   font-weight: 600;
-  opacity: 0.95;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  gap: 4px;
+  opacity: 0.9;
 }
 
 .country-emergency__always {
   font-size: 11px;
-  opacity: 0.85;
+  opacity: 0.75;
   font-weight: 400;
 }
 
@@ -125,16 +137,16 @@ body {
 
 .country-emergency__btn {
   background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 10px;
   padding: 10px 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   text-decoration: none;
   color: #fff;
-  min-height: 60px;
+  min-height: 64px;
   justify-content: center;
   transition: background 0.15s;
 }
@@ -143,16 +155,46 @@ body {
   background: rgba(255, 255, 255, 0.3);
 }
 
-.country-emergency__label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  opacity: 0.9;
+.country-emergency__icon {
+  font-size: 20px;
+  line-height: 1;
 }
 
 .country-emergency__num {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.country-emergency__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  opacity: 0.85;
+}
+
+/* Section divider between dispatch numbers and nearby services */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 0;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.section-divider__label {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 4px;
 }
 
 /* Main */
@@ -515,6 +557,9 @@ body {
   margin-top: 8px;
 }
 
+/* Missing category badges */
+.category-badge--showroom { background: rgba(26, 188, 156, 0.2); color: #76d7c4; }
+
 code {
   background: var(--bg-card);
   padding: 2px 6px;
@@ -522,3 +567,182 @@ code {
   font-family: monospace;
   font-size: 13px;
 }
+
+/* ─── Crash Alert ────────────────────────────────────────────────────────── */
+.crash-alert {
+  max-width: 400px;
+  width: 100%;
+}
+
+.crash-alert__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.crash-alert__header h2 { margin: 0; font-size: 20px; }
+.crash-alert__icon { font-size: 28px; }
+
+.crash-alert__countdown {
+  background: rgba(192, 57, 43, 0.15);
+  border: 1px solid rgba(192, 57, 43, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #ff8b7d;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Mode selection buttons */
+.crash-alert__modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.crash-mode {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  transition: all 0.15s;
+  color: var(--text);
+}
+
+.crash-mode:active { transform: scale(0.97); }
+
+.crash-mode--auto {
+  border-color: var(--accent-bright);
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.crash-mode--manual {
+  border-color: var(--info);
+  background: rgba(52, 152, 219, 0.1);
+}
+
+.crash-mode__icon { font-size: 24px; }
+.crash-mode__title { font-size: 15px; font-weight: 700; }
+.crash-mode__desc { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+
+/* Cancel zone at bottom of choosing phase */
+.crash-alert__cancel-zone {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crash-alert__cancel-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* Automating phase */
+.crash-alert__auto-countdown {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 4px solid var(--accent-bright);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 12px auto 16px;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--accent-bright);
+  text-align: center;
+  animation: pulse-ring 1s ease-in-out infinite;
+}
+
+.crash-alert__auto-countdown span { font-size: 12px; font-weight: 400; color: var(--text-dim); }
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(231, 76, 60, 0); }
+}
+
+.crash-alert__auto-info {
+  font-size: 13px;
+  color: var(--text-dim);
+  background: var(--bg-card);
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.crash-alert__speaking {
+  background: rgba(39, 174, 96, 0.15);
+  border: 1px solid rgba(39, 174, 96, 0.3);
+  color: #7dcea0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 12px;
+  animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.crash-alert__cancel-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* Manual phase */
+.crash-alert__landmark {
+  background: var(--bg-card);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.crash-alert__coords {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: monospace;
+  margin-bottom: 16px;
+  padding: 0 2px;
+}
+
+.crash-alert__manual-calls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.crash-call-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+  color: #fff;
+  min-height: 56px;
+  transition: opacity 0.15s;
+}
+
+.crash-call-btn:active { opacity: 0.8; }
+.crash-call-btn--ambulance { background: var(--warning); color: #000; }
+.crash-call-btn--police    { background: var(--info); }
+.crash-call-btn--general   { background: var(--accent); }

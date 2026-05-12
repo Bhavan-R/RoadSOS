@@ -12,10 +12,16 @@ function buildMessage({ lat, lon, landmark, topContact }) {
   return lines.join('\n');
 }
 
-export default function SOSButton({ location, landmark, topContact }) {
+export default function SOSButton({ location, landmark, topContact, onFirstTap }) {
   const [copied, setCopied] = useState(false);
+  const tappedRef = React.useRef(false);
 
   const handleSOS = () => {
+    // Request iOS motion permission on first user gesture
+    if (!tappedRef.current) {
+      tappedRef.current = true;
+      onFirstTap?.();
+    }
     if (!location) return;
     const message = buildMessage({ lat: location.lat, lon: location.lon, landmark, topContact });
     const encoded = encodeURIComponent(message);
