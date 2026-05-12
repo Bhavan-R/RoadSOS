@@ -20,6 +20,7 @@
 [![Anthropic](https://img.shields.io/badge/Anthropic-Claude%20Haiku%204.5-d97757)](https://www.anthropic.com/)
 [![OSM](https://img.shields.io/badge/Data-OpenStreetMap-7EBC6F?logo=openstreetmap&logoColor=white)](https://www.openstreetmap.org/)
 
+[![Backend Tests](https://github.com/Arthrevs/Roadproj/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/Arthrevs/Roadproj/actions/workflows/backend-tests.yml)
 [![Countries](https://img.shields.io/badge/Coverage-59%20Countries-3498db?style=flat-square)](#-international-coverage)
 [![Categories](https://img.shields.io/badge/Service%20Types-6-9b59b6?style=flat-square)](#-features)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
@@ -137,6 +138,8 @@ Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within 
 ┌──────────────────────────────────────────────────────────────┐
 │                    FastAPI Backend (Render)                   │
 ├──────────────────────────────────────────────────────────────┤
+│  In-memory TTL Cache  (3600s Overpass · 3600s Google · 24h geocode) │
+│                                                               │
 │  GET /search                                                  │
 │   ├─ Overpass API (OSM)  ──── 5km radius                     │
 │   ├─ Expand to 10km      ──── if < 3 results                 │
@@ -147,6 +150,13 @@ Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within 
 │  POST /triage                                                 │
 │   ├─ Anthropic Claude Haiku 4.5  ─── situation-aware sort    │
 │   └─ Rule-based fallback         ─── if API down             │
+│                                                               │
+│  POST /dispatch-summary                                       │
+│   ├─ Claude Haiku  ─── human-readable accident description    │
+│   └─ Template fallback ── if API unavailable                  │
+│                                                               │
+│  GET /health                                                  │
+│   └─ Uptime · API key status · cache hit-rate stats           │
 │                                                               │
 │  GET /offline-pack                                            │
 │   └─ Serves 59-country emergency numbers JSON                 │
@@ -229,9 +239,26 @@ Roadproj/
 │       ├── googleplaces_service.py   # Nearby Search + Place Details fallback
 │       ├── geocoder.py               # Nominatim reverse geocode → landmark + country ISO
 │       ├── ai_triage.py              # Anthropic SDK + rule-based fallback
+│       ├── cache.py                  # In-memory TTL cache (Overpass / Google / geocode)
+│       ├── phone_utils.py            # E.164 normalization via phonenumbers library
+│       ├── hours_parser.py           # OSM opening_hours → isOpen bool
 │       ├── search_service.py         # GET /search orchestrator
 │       ├── triage_service.py         # POST /triage router
+│       ├── dispatch_service.py       # POST /dispatch-summary router
+│       ├── health_service.py         # GET /health router
 │       └── offline_service.py        # GET /offline-pack router
+│   ├── tests/                        # Pure unit tests — no API keys or network needed
+│   │   ├── test_overpass.py          # haversine, classify, parse, dedup, query builder
+│   │   ├── test_ai_triage.py         # rule_based_triage all 4 cases + _validate_ai_result
+│   │   ├── test_cache.py             # TTLCache expiry, eviction, stats, location_key
+│   │   ├── test_hours_parser.py      # OSM opening_hours parsing + datetime injection
+│   │   └── test_phone_utils.py       # E.164 normalize, is_dialable, phones_match
+│   ├── pytest.ini
+│   └── requirements-dev.txt
+│
+├── .github/
+│   └── workflows/
+│       └── backend-tests.yml         # CI: pytest on Python 3.11 + 3.12 on every push
 │
 ├── frontend/                         # React PWA
 │   ├── index.html
@@ -356,6 +383,56 @@ Reorders contacts using AI for a specific situation.
   "reason": "Trauma care prioritised · ambulance and hospital listed first"
 }
 ```
+
+### `POST /dispatch-summary`
+
+Generates a ready-to-read dispatch text describing the accident — useful for handing a phone to a bystander or pasting into a WhatsApp message.
+
+**Request:**
+```json
+{
+  "lat": 12.9716,
+  "lon": 77.5946,
+  "landmark": "Bannerghatta Road, BTM Layout",
+  "injured": true,
+  "blocking": true
+}
+```
+
+**Response:**
+```json
+{
+  "summary": "Road accident at Bannerghatta Road, BTM Layout (12.9716, 77.5946). Injured persons on scene. Vehicle blocking traffic. Emergency services needed immediately.",
+  "source": "ai"
+}
+```
+
+`source` is `"ai"` when Claude generated the text, `"template"` when the rule-based fallback was used.
+
+---
+
+### `GET /health`
+
+System health check — useful for uptime monitors and the Render health-check probe.
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "uptime_seconds": 3821,
+  "configured": {
+    "anthropic": true,
+    "google_places": false
+  },
+  "cache": {
+    "overpass": { "size": 4, "hits": 11, "misses": 4, "hit_rate": 0.73 },
+    "google":   { "size": 0, "hits": 0,  "misses": 0, "hit_rate": 0.0 },
+    "geocode":  { "size": 4, "hits": 9,  "misses": 4, "hit_rate": 0.69 }
+  }
+}
+```
+
+---
 
 ### `GET /offline-pack`
 

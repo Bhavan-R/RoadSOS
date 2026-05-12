@@ -1,7 +1,25 @@
-import httpx
+"""Google Places fallback for sparse OSM regions.
+
+Only invoked when Overpass returns fewer than 3 results at the expanded radius.
+We use Nearby Search to find places, then Place Details for each to get the
+phone number (the Nearby endpoint does not return phones).
+
+Costs money beyond the free tier. Capped to top 5 places per type per call to
+control spend during the hackathon.
+"""
+from __future__ import annotations
+
+import logging
 import math
 import os
 from typing import Optional
+
+import httpx
+
+from services.cache import google_cache, location_key
+from services.phone_utils import normalize_phone
+
+logger = logging.getLogger(__name__)
 
 NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
@@ -32,23 +50,32 @@ def map_google_types(types: list[str]) -> Optional[str]:
     return None
 
 
-async def get_place_details(client: httpx.AsyncClient, place_id: str, api_key: str) -> dict:
-    resp = await client.get(DETAILS_URL, params={
-        "place_id": place_id,
-        "fields": "formatted_phone_number,opening_hours",
-        "key": api_key,
-    }, timeout=10.0)
-    result = resp.json().get("result", {})
-    return {
-        "phone": result.get("formatted_phone_number"),
-        "isOpen": result.get("opening_hours", {}).get("open_now"),
-    }
+async def _get_place_details(client: httpx.AsyncClient, place_id: str, api_key: str, region: Optional[str]) -> dict:
+    try:
+        resp = await client.get(DETAILS_URL, params={
+            "place_id": place_id,
+            "fields": "formatted_phone_number,opening_hours",
+            "key": api_key,
+        }, timeout=10.0)
+        result = resp.json().get("result", {})
+        return {
+            "phone": normalize_phone(result.get("formatted_phone_number"), default_region=region),
+            "isOpen": result.get("opening_hours", {}).get("open_now"),
+        }
+    except Exception:
+        return {"phone": None, "isOpen": None}
 
 
-async def search_nearby_places(lat: float, lon: float, radius: int = 5000) -> list[dict]:
+async def search_nearby_places(lat: float, lon: float, radius: int = 5000, region: Optional[str] = None) -> list[dict]:
     api_key = os.getenv("GOOGLE_PLACES_API_KEY", "")
     if not api_key:
         return []
+
+    cache_key = location_key(lat, lon, f"r{radius}")
+    cached = await google_cache.get(cache_key)
+    if cached is not None:
+        logger.info(f"Google Places cache hit · {cache_key} · {len(cached)} contacts")
+        return cached
 
     results: list[dict] = []
     seen_ids: set[str] = set()
@@ -63,7 +90,8 @@ async def search_nearby_places(lat: float, lon: float, radius: int = 5000) -> li
                     "key": api_key,
                 })
                 places = resp.json().get("results", [])[:5]
-            except Exception:
+            except Exception as exc:
+                logger.warning(f"Google Places nearby query failed for {place_type}: {exc}")
                 continue
 
             for place in places:
@@ -77,10 +105,7 @@ async def search_nearby_places(lat: float, lon: float, radius: int = 5000) -> li
                     continue
 
                 loc = place["geometry"]["location"]
-                try:
-                    details = await get_place_details(client, place_id, api_key)
-                except Exception:
-                    details = {"phone": None, "isOpen": None}
+                details = await _get_place_details(client, place_id, api_key, region)
 
                 results.append({
                     "id": f"gp_{place_id}",
@@ -95,4 +120,7 @@ async def search_nearby_places(lat: float, lon: float, radius: int = 5000) -> li
                     "aiReason": None,
                 })
 
-    return sorted(results, key=lambda x: x["distance"])
+    sorted_results = sorted(results, key=lambda x: x["distance"])
+    await google_cache.set(cache_key, sorted_results)
+    logger.info(f"Google Places fetched · {cache_key} · {len(sorted_results)} contacts")
+    return sorted_results

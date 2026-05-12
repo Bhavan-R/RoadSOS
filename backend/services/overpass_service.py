@@ -1,14 +1,32 @@
-import httpx
+"""OpenStreetMap Overpass API integration.
+
+Queries six categories of emergency-relevant services around a coordinate,
+parses results, computes great-circle distance, applies cache, and returns a
+distance-sorted list of normalised contact objects.
+"""
+from __future__ import annotations
+
+import logging
 import math
 from typing import Optional
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+import httpx
 
-CATEGORY_MAP = [
+from services.cache import overpass_cache, location_key
+from services.phone_utils import normalize_phone
+from services.hours_parser import parse_is_open
+
+logger = logging.getLogger(__name__)
+
+OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_TIMEOUT = 30.0
+
+CATEGORY_MAP: list[tuple[tuple[str, str], str]] = [
     (("amenity", "hospital"), "hospital"),
     (("amenity", "clinic"), "hospital"),
     (("amenity", "doctors"), "hospital"),
     (("healthcare", "hospital"), "hospital"),
+    (("healthcare", "clinic"), "hospital"),
     (("amenity", "police"), "police"),
     (("emergency", "ambulance_station"), "ambulance"),
     (("amenity", "ambulance_station"), "ambulance"),
@@ -21,6 +39,7 @@ CATEGORY_MAP = [
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in kilometres."""
     R = 6371.0
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -29,37 +48,41 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def classify_element(tags: dict) -> Optional[str]:
-    for (key, val), cat in CATEGORY_MAP:
+    for (key, val), category in CATEGORY_MAP:
         if tags.get(key) == val:
-            return cat
+            return category
     return None
 
 
 def build_overpass_query(lat: float, lon: float, radius: int) -> str:
-    r = radius
     c = f"{lat},{lon}"
     return f"""[out:json][timeout:25];
 (
-  node["amenity"="hospital"](around:{r},{c});
-  way["amenity"="hospital"](around:{r},{c});
-  node["amenity"="clinic"](around:{r},{c});
-  node["amenity"="doctors"](around:{r},{c});
-  node["healthcare"="hospital"](around:{r},{c});
-  node["amenity"="police"](around:{r},{c});
-  way["amenity"="police"](around:{r},{c});
-  node["emergency"="ambulance_station"](around:{r},{c});
-  node["amenity"="ambulance_station"](around:{r},{c});
-  node["amenity"="fire_station"](around:{r},{c});
-  node["shop"="car_repair"](around:{r},{c});
-  node["amenity"="car_repair"](around:{r},{c});
-  node["shop"="tyres"](around:{r},{c});
+  node["amenity"="hospital"](around:{radius},{c});
+  way["amenity"="hospital"](around:{radius},{c});
+  node["amenity"="clinic"](around:{radius},{c});
+  way["amenity"="clinic"](around:{radius},{c});
+  node["amenity"="doctors"](around:{radius},{c});
+  node["healthcare"="hospital"](around:{radius},{c});
+  way["healthcare"="hospital"](around:{radius},{c});
+  node["healthcare"="clinic"](around:{radius},{c});
+  node["amenity"="police"](around:{radius},{c});
+  way["amenity"="police"](around:{radius},{c});
+  node["emergency"="ambulance_station"](around:{radius},{c});
+  node["amenity"="ambulance_station"](around:{radius},{c});
+  node["amenity"="fire_station"](around:{radius},{c});
+  way["amenity"="fire_station"](around:{radius},{c});
+  node["shop"="car_repair"](around:{radius},{c});
+  way["shop"="car_repair"](around:{radius},{c});
+  node["amenity"="car_repair"](around:{radius},{c});
+  node["shop"="tyres"](around:{radius},{c});
 );
 out body center;
 >;
-out skel qt;"""
+out skel qt;""".strip()
 
 
-def parse_element(element: dict, user_lat: float, user_lon: float) -> Optional[dict]:
+def parse_element(element: dict, user_lat: float, user_lon: float, region: Optional[str] = None) -> Optional[dict]:
     tags = element.get("tags", {})
     category = classify_element(tags)
     if not category:
@@ -75,12 +98,14 @@ def parse_element(element: dict, user_lat: float, user_lon: float) -> Optional[d
         or tags.get("name")
         or f"Unnamed {category.title()}"
     )
-    phone = (
+    raw_phone = (
         tags.get("phone")
         or tags.get("contact:phone")
         or tags.get("telephone")
         or tags.get("emergency:phone")
     )
+    phone = normalize_phone(raw_phone, default_region=region)
+    is_open = parse_is_open(tags.get("opening_hours"))
 
     return {
         "id": f"osm_{element['id']}",
@@ -91,29 +116,50 @@ def parse_element(element: dict, user_lat: float, user_lon: float) -> Optional[d
         "lat": lat,
         "lon": lon,
         "source": "OpenStreetMap",
-        "isOpen": None,
+        "isOpen": is_open,
         "aiReason": None,
     }
 
 
+def _dedupe_by_name(items: list[dict]) -> list[dict]:
+    seen: set[str] = set()
+    out: list[dict] = []
+    for item in items:
+        key = item["name"].lower().strip()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+    return out
+
+
 async def build_and_fetch_query(lat: float, lon: float, radius: int = 5000) -> list[dict]:
+    cache_key = location_key(lat, lon, f"r{radius}")
+    cached = await overpass_cache.get(cache_key)
+    if cached is not None:
+        logger.info(f"Overpass cache hit · {cache_key} · {len(cached)} contacts")
+        return cached
+
     query = build_overpass_query(lat, lon, radius)
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(OVERPASS_URL, data={"data": query})
-        resp.raise_for_status()
-        data = resp.json()
 
-    results: list[dict] = []
-    seen_names: set[str] = set()
+    try:
+        async with httpx.AsyncClient(timeout=OVERPASS_TIMEOUT) as client:
+            resp = await client.post(OVERPASS_URL, data={"data": query})
+            resp.raise_for_status()
+            data = resp.json()
+    except httpx.HTTPError as exc:
+        logger.warning(f"Overpass request failed · {type(exc).__name__}: {exc}")
+        raise
 
+    raw_results: list[dict] = []
     for element in data.get("elements", []):
         parsed = parse_element(element, lat, lon)
-        if parsed is None:
-            continue
-        name_key = parsed["name"].lower().strip()
-        if name_key in seen_names:
-            continue
-        seen_names.add(name_key)
-        results.append(parsed)
+        if parsed is not None:
+            raw_results.append(parsed)
 
-    return sorted(results, key=lambda x: x["distance"])
+    deduped = _dedupe_by_name(raw_results)
+    sorted_results = sorted(deduped, key=lambda x: x["distance"])
+
+    await overpass_cache.set(cache_key, sorted_results)
+    logger.info(f"Overpass fetched · {cache_key} · {len(sorted_results)} contacts")
+    return sorted_results
