@@ -1,19 +1,28 @@
 import React from 'react';
 
+/**
+ * CountryEmergency — always-visible banner at top of screen.
+ *
+ * Props: { country, police, ambulance, fire, general }
+ * Each value is a dial string (e.g. "108", "100").
+ */
+
+const BUTTONS = [
+  { key: 'ambulance', icon: '🚑', label: 'Ambulance', colorClass: 'ce-btn--ambulance' },
+  { key: 'police',    icon: '👮', label: 'Police',    colorClass: 'ce-btn--police'    },
+  { key: 'fire',      icon: '🔥', label: 'Fire',      colorClass: 'ce-btn--fire'      },
+  { key: 'general',   icon: '📟', label: 'General',   colorClass: 'ce-btn--general'   },
+];
+
 export default function CountryEmergency({ numbers }) {
   if (!numbers) return null;
-  const { country, police, ambulance, fire, general } = numbers;
 
-  const Button = ({ label, num, icon }) => (
-    <a className="country-emergency__btn" href={`tel:${num}`}>
-      <span className="country-emergency__icon">{icon}</span>
-      <span className="country-emergency__num">{num}</span>
-      <span className="country-emergency__label">{label}</span>
-    </a>
-  );
+  const { country, police, ambulance, fire, general } = numbers;
+  const vals = { police, ambulance, fire, general };
 
   return (
-    <div className="country-emergency">
+    <section className="country-emergency" aria-label="National emergency numbers">
+      {/* Header */}
       <div className="country-emergency__header">
         <div className="country-emergency__title-row">
           <span className="country-emergency__call-first">🚨 CALL FIRST</span>
@@ -21,12 +30,27 @@ export default function CountryEmergency({ numbers }) {
         </div>
         <span className="country-emergency__always">Works offline · 196 countries</span>
       </div>
+
+      {/* 4-button grid */}
       <div className="country-emergency__grid">
-        <Button icon="🚑" label="Ambulance" num={ambulance} />
-        <Button icon="👮" label="Police"    num={police}    />
-        <Button icon="🔥" label="Fire"      num={fire}      />
-        <Button icon="📟" label="General"   num={general}   />
+        {BUTTONS.map(({ key, icon, label, colorClass }) => {
+          const num = vals[key];
+          if (!num) return null;
+          return (
+            <a
+              key={key}
+              href={`tel:${num}`}
+              className={`country-emergency__btn ${colorClass}`}
+              id={`ce-btn-${key}`}
+              aria-label={`Call ${label}: ${num}`}
+            >
+              <span className="country-emergency__icon">{icon}</span>
+              <span className="country-emergency__num">{num}</span>
+              <span className="country-emergency__label">{label}</span>
+            </a>
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 }
