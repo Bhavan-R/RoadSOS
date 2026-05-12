@@ -10,6 +10,7 @@ const CORRECT_PIN    = '0000';
 const PHASE = {
   CHOOSING   : 'choosing',
   AUTOMATING : 'automating',
+  CALLING    : 'calling',   // after dial — shows script to read to dispatcher
   MANUAL     : 'manual',
 };
 
@@ -62,11 +63,11 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
 
   // ─── Mode: AUTOMATING ─────────────────────────────────────────────────
   function triggerAutomatic() {
-    stopAlarm();             // stop bystander alarm — we're now calling
+    stopAlarm();
     setPhase(PHASE.AUTOMATING);
 
-    // Start speaking the dispatch message immediately so it plays
-    // through the countdown and is audible the moment the call connects.
+    // Read the dispatch message aloud NOW — user hears exactly what to say
+    // before the call connects, so they can repeat it to the dispatcher.
     const text = buildDispatchText({
       landmark,
       lat     : location?.lat,
@@ -77,17 +78,20 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
     setSpeaking(true);
     speakText(text).finally(() => setSpeaking(false));
 
-    startCountdown(AUTO_SECONDS, fireCall);
+    startCountdown(AUTO_SECONDS, () => fireCall(text));
   }
 
-  function fireCall() {
+  function fireCall(dispatchText) {
     clearInterval(intervalRef.current);
+
+    // Show the dispatcher script on screen while the call is active.
+    setPhase(PHASE.CALLING);
 
     // Demo mode: shows a toast instead of placing a real emergency call.
     // Production (?demo=0): dials the actual number.
     setTimeout(() => {
       safeAutoDial(callNumber, 'Ambulance');
-    }, 1200);
+    }, 600);
 
     onConfirm?.();
   }
@@ -197,6 +201,13 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
 
   // ─── AUTOMATING phase ──────────────────────────────────────────────────
   if (phase === PHASE.AUTOMATING) {
+    const dispatchText = buildDispatchText({
+      landmark,
+      lat     : location?.lat,
+      lon     : location?.lon,
+      injured : true,
+      blocking: true,
+    });
     return (
       <div className="modal-backdrop modal-backdrop--alert" role="alertdialog" aria-modal="true">
         <div className="modal modal--alert crash-alert">
@@ -212,27 +223,54 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
             }
           </div>
 
-          <p className="crash-alert__auto-info">
-            Voice message will play to dispatcher:<br />
-            <em style={{ fontSize: '13px', opacity: 0.8 }}>
-              "{buildDispatchText({
-                landmark,
-                lat     : location?.lat,
-                lon     : location?.lon,
-                injured : true,
-                blocking: true,
-              })}"
-            </em>
-          </p>
-
-          {speaking && (
-            <div className="crash-alert__speaking">
-              🔊 Speaking to dispatcher...
+          {/* Script the user reads to dispatcher — voice reads it aloud first */}
+          <div className="crash-alert__script-box">
+            <div className="crash-alert__script-label">
+              {speaking ? '🔊 Listen — then say this to dispatcher:' : '📋 Say this to dispatcher:'}
             </div>
-          )}
+            <p className="crash-alert__script-text">"{dispatchText}"</p>
+          </div>
 
           <button className="modal__secondary crash-alert__cancel-btn" onClick={handleCancelAuto}>
             Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── CALLING phase ────────────────────────────────────────────────────
+  if (phase === PHASE.CALLING) {
+    const dispatchText = buildDispatchText({
+      landmark,
+      lat     : location?.lat,
+      lon     : location?.lon,
+      injured : true,
+      blocking: true,
+    });
+    return (
+      <div className="modal-backdrop modal-backdrop--alert" role="alertdialog" aria-modal="true">
+        <div className="modal modal--alert crash-alert">
+          <div className="crash-alert__header">
+            <span className="crash-alert__icon">📞</span>
+            <h2>Say this to the dispatcher</h2>
+          </div>
+
+          <div className="crash-alert__script-box crash-alert__script-box--live">
+            <p className="crash-alert__script-text crash-alert__script-text--large">
+              "{dispatchText}"
+            </p>
+          </div>
+
+          <p className="crash-alert__auto-info" style={{ marginTop: 8 }}>
+            Read this out loud. The dispatcher will guide you next.
+          </p>
+
+          <button
+            className="modal__secondary crash-alert__cancel-btn"
+            onClick={() => { cancelSpeech(); onCancel?.(); }}
+          >
+            Close
           </button>
         </div>
       </div>
