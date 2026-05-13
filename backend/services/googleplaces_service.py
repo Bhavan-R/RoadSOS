@@ -27,16 +27,15 @@ DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 FINDPLACE_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
 
 # ─── Key rotation ────────────────────────────────────────────────────────────
-# Looks for GOOGLE_PLACES_API_KEY (or Mapsplatformkey for Render compatibility).
+# Set Mapsplatformkey as a comma-separated list of keys on Render to
+# distribute load across multiple billing accounts.
 def _load_keys() -> list[str]:
-    # Try multiple possible env var names for flexibility
-    for env_var in ["GOOGLE_PLACES_API_KEY", "GOOGLE_PLACES_API_KEYS", "Mapsplatformkey"]:
-        multi = os.getenv(env_var, "")
-        if multi:
-            keys = [k.strip() for k in multi.split(",") if k.strip()]
-            if keys:
-                return keys
-    return []
+    multi = os.getenv("Mapsplatformkey", "")
+    keys = [k.strip() for k in multi.split(",") if k.strip()]
+    if not keys:
+        single = os.getenv("Mapsplatformkey", "")
+        keys = [single] if single else []
+    return keys
 
 _KEY_POOL: list[str] = _load_keys()
 _key_cycle = itertools.cycle(_KEY_POOL) if _KEY_POOL else None

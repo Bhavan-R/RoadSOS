@@ -13,9 +13,11 @@
 const KEEP_WARM_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 let intervalId = null;
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 async function ping() {
   try {
-    await fetch('/health', { signal: AbortSignal.timeout(60_000) });
+    await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(60_000) });
   } catch {
     // silent — first ping may take 30-60s on cold start, that's expected
   }
