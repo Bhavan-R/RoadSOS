@@ -13,6 +13,8 @@ import TriageModal      from './components/TriageModal';
 import OfflineBanner    from './components/OfflineBanner';
 import CrashAlert       from './components/CrashAlert';
 import { requestMotionPermission } from './hooks/useLocation';
+import { DEMO_MODE } from './utils/demoMode';
+import { startBackendWarmup } from './utils/backendWarmup';
 
 // ─── Demo location picker ─────────────────────────────────────────────────────
 const DEMO_LOCATIONS = [
@@ -103,6 +105,12 @@ export default function App() {
 
   const isOnline = useNetwork();
 
+  // Wake up the Render backend immediately on app load to avoid 30-60s
+  // cold-start delays during a judging demo.
+  useEffect(() => {
+    startBackendWarmup();
+  }, []);
+
   // ── Active location: demo override OR real GPS ──────────────────────────
   const activeLocation = useMemo(() => {
     const demo = DEMO_LOCATIONS[demoIdx];
@@ -123,9 +131,15 @@ export default function App() {
   const [triageLoading, setTriageLoading] = useState(false);
   const [triaged,       setTriaged]       = useState(false);
 
-  // ── Run search whenever active location changes ────────────────────────
+  // Round to 2 decimal places (~1 km grid) so GPS jitter never triggers
+  // a redundant search. The distance gate in useLocation handles <50 m moves;
+  // this is a second layer of defence at the search level.
+  const searchLat = activeLocation ? Math.round(activeLocation.lat * 100) / 100 : null;
+  const searchLon = activeLocation ? Math.round(activeLocation.lon * 100) / 100 : null;
+
+  // ── Run search whenever the rounded location changes ────────────────────
   useEffect(() => {
-    if (!activeLocation) return;
+    if (searchLat == null || searchLon == null) return;
 
     let cancelled = false;
     setSearchLoading(true);
@@ -133,18 +147,23 @@ export default function App() {
     setCachedAt(null);
     setTriaged(false);
 
+    // Hard 30-second timeout so a cold Render backend never leaves the
+    // spinner stuck forever. (Backend itself retries Overpass up to ~21 s.)
+    const controller = new AbortController();
+    const hardTimeout = setTimeout(() => controller.abort(), 30_000);
+
     (async () => {
       try {
-        const data = await searchNearby(activeLocation.lat, activeLocation.lon);
+        const data = await searchNearby(searchLat, searchLon, controller.signal);
         if (cancelled) return;
         setSearchData(data);
         setTriageOpen(true);
-        saveSearchResult(activeLocation.lat, activeLocation.lon, data);
+        saveSearchResult(searchLat, searchLon, data);
       } catch (err) {
         if (cancelled) return;
 
         // Try localStorage cache first
-        const cached = loadSearchResult(activeLocation.lat, activeLocation.lon);
+        const cached = loadSearchResult(searchLat, searchLon);
         if (cached) {
           setSearchData(cached);
           setCachedAt(cached.cachedAt);
@@ -161,13 +180,13 @@ export default function App() {
           );
         }
       } finally {
+        clearTimeout(hardTimeout);
         if (!cancelled) setSearchLoading(false);
       }
     })();
 
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLocation?.lat, activeLocation?.lon]);
+    return () => { cancelled = true; controller.abort(); clearTimeout(hardTimeout); };
+  }, [searchLat, searchLon]);
 
   // ── Triage submit ──────────────────────────────────────────────────────
   const handleTriage = useCallback(async ({ injured, blocking }) => {
@@ -204,18 +223,31 @@ export default function App() {
         <div className="app__brand">
           <span className="app__logo">🚨</span>
           <span className="app__title">RoadSOS</span>
+          {DEMO_MODE && <span className="demo-badge" title="Calls are simulated. Add ?demo=0 to enable real dialing.">🧪 DEMO</span>}
         </div>
-        <select
-          className="demo-picker"
-          value={demoIdx}
-          onChange={(e) => setDemoIdx(Number(e.target.value))}
-          aria-label="Demo location"
-          id="demo-location-picker"
-        >
-          {DEMO_LOCATIONS.map((d, i) => (
-            <option key={i} value={i}>{d.label}</option>
-          ))}
-        </select>
+        <div className="app__header-actions">
+          {DEMO_MODE && (
+            <button
+              type="button"
+              className="test-crash-btn"
+              onClick={() => setCrashOpen(true)}
+              title="Manually trigger the crash alert for demonstration"
+            >
+              🧪 Test Crash
+            </button>
+          )}
+          <select
+            className="demo-picker"
+            value={demoIdx}
+            onChange={(e) => setDemoIdx(Number(e.target.value))}
+            aria-label="Demo location"
+            id="demo-location-picker"
+          >
+            {DEMO_LOCATIONS.map((d, i) => (
+              <option key={i} value={i}>{d.label}</option>
+            ))}
+          </select>
+        </div>
       </header>
 
       {/* ── Offline banner (self-contained, uses useNetwork internally) ── */}

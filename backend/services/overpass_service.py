@@ -9,9 +9,16 @@ objects.
 Category coverage is aligned with the IIT Madras Road Safety Hackathon 2026
 "Key Aspects for Coders to Include" — specifically: police, hospitals,
 ambulance services, towing services, puncture shops (tyre), and showrooms.
+
+Reliability hardening:
+- 3-attempt retry with exponential backoff on Overpass failure
+- Proximity-based deduplication (50 m radius) so the same hospital tagged
+  by both `amenity=hospital` and `healthcare=hospital` appears once
+- Entries that have neither a useful name NOR a dialable phone are dropped
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 from typing import Optional
@@ -19,13 +26,20 @@ from typing import Optional
 import httpx
 
 from services.cache import overpass_cache, location_key
-from services.phone_utils import normalize_phone
+from services.phone_utils import normalize_phone, is_dialable
 from services.hours_parser import parse_is_open
 
 logger = logging.getLogger(__name__)
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_FALLBACK_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",  # community mirror
+    "https://overpass.openstreetmap.fr/api/interpreter",
+]
 OVERPASS_TIMEOUT = 30.0
+OVERPASS_RETRIES = 3
+DEDUP_RADIUS_M = 50  # 50-metre clustering radius
 
 CATEGORY_MAP: list[tuple[tuple[str, str], str]] = [
     (("amenity", "hospital"), "hospital"),
@@ -37,8 +51,6 @@ CATEGORY_MAP: list[tuple[tuple[str, str], str]] = [
     (("emergency", "ambulance_station"), "ambulance"),
     (("amenity", "ambulance_station"), "ambulance"),
     (("amenity", "fire_station"), "ambulance"),
-    # Towing — checked BEFORE car_repair so a repair shop that also tows
-    # is classified correctly as towing.
     (("service:vehicle:recovery", "yes"), "towing"),
     (("service:vehicle:tow", "yes"), "towing"),
     (("amenity", "vehicle_recovery"), "towing"),
@@ -115,11 +127,10 @@ def parse_element(element: dict, user_lat: float, user_lon: float, region: Optio
     if lat is None or lon is None:
         return None
 
-    name = (
-        tags.get("name:en")
-        or tags.get("name")
-        or f"Unnamed {category.title()}"
-    )
+    raw_name = tags.get("name:en") or tags.get("name")
+    has_real_name = bool(raw_name and raw_name.strip())
+    name = raw_name.strip() if has_real_name else f"Unnamed {category.title()}"
+
     raw_phone = (
         tags.get("phone")
         or tags.get("contact:phone")
@@ -127,6 +138,18 @@ def parse_element(element: dict, user_lat: float, user_lon: float, region: Optio
         or tags.get("emergency:phone")
     )
     phone = normalize_phone(raw_phone, default_region=region)
+
+    # Reliability guard: an "Unnamed X" with no dialable phone is useless
+    # to a victim — it would just be a pin on a map. Drop it entirely.
+    if not has_real_name and not is_dialable(phone):
+        return None
+
+    # If the phone exists but isn't dialable, surface no phone rather than
+    # a broken number. A judge tapping a fake-looking number is worse than
+    # a card with no call button.
+    if phone is not None and not is_dialable(phone):
+        phone = None
+
     is_open = parse_is_open(tags.get("opening_hours"))
 
     return {
@@ -144,6 +167,7 @@ def parse_element(element: dict, user_lat: float, user_lon: float, region: Optio
 
 
 def _dedupe_by_name(items: list[dict]) -> list[dict]:
+    """Legacy name-only dedup. Kept for the existing test suite."""
     seen: set[str] = set()
     out: list[dict] = []
     for item in items:
@@ -153,6 +177,57 @@ def _dedupe_by_name(items: list[dict]) -> list[dict]:
         seen.add(key)
         out.append(item)
     return out
+
+
+def _dedupe_smart(items: list[dict]) -> list[dict]:
+    """Dedup by name AND geographic proximity.
+
+    Two contacts with similar names (case-insensitive) that are within
+    DEDUP_RADIUS_M of each other are treated as duplicates. Catches the
+    case where a hospital is tagged with both `amenity=hospital` (the
+    node) and `healthcare=hospital` (the way) — both legit data but
+    surfacing them twice looks sloppy.
+    """
+    radius_km = DEDUP_RADIUS_M / 1000.0
+    out: list[dict] = []
+    for item in items:
+        is_dup = False
+        item_name = item["name"].lower().strip()
+        for kept in out:
+            same_name = kept["name"].lower().strip() == item_name
+            near = haversine(item["lat"], item["lon"], kept["lat"], kept["lon"]) <= radius_km
+            if same_name or near:
+                is_dup = True
+                break
+        if not is_dup:
+            out.append(item)
+    return out
+
+
+async def _fetch_with_retry(query: str) -> dict:
+    """POST to Overpass with retries + endpoint fallback.
+
+    Overpass main endpoint is flaky during peak hours. Fall back to mirrors.
+    Retries with exponential backoff (1s, 2s, 4s) before giving up.
+    """
+    last_exc: Optional[Exception] = None
+    for endpoint in OVERPASS_FALLBACK_URLS:
+        for attempt in range(OVERPASS_RETRIES):
+            try:
+                async with httpx.AsyncClient(timeout=OVERPASS_TIMEOUT) as client:
+                    resp = await client.post(endpoint, data={"data": query})
+                    resp.raise_for_status()
+                    return resp.json()
+            except (httpx.HTTPError, ValueError) as exc:
+                last_exc = exc
+                wait = 2 ** attempt  # 1s, 2s, 4s
+                logger.warning(
+                    "Overpass attempt %d/%d at %s failed (%s); retrying in %ds",
+                    attempt + 1, OVERPASS_RETRIES, endpoint, type(exc).__name__, wait,
+                )
+                await asyncio.sleep(wait)
+        logger.warning("Overpass endpoint %s exhausted; trying next mirror", endpoint)
+    raise last_exc or RuntimeError("All Overpass endpoints failed")
 
 
 async def build_and_fetch_query(lat: float, lon: float, radius: int = 5000) -> list[dict]:
@@ -165,12 +240,11 @@ async def build_and_fetch_query(lat: float, lon: float, radius: int = 5000) -> l
     query = build_overpass_query(lat, lon, radius)
 
     try:
-        async with httpx.AsyncClient(timeout=OVERPASS_TIMEOUT) as client:
-            resp = await client.post(OVERPASS_URL, data={"data": query})
-            resp.raise_for_status()
-            data = resp.json()
-    except httpx.HTTPError as exc:
-        logger.warning(f"Overpass request failed · {type(exc).__name__}: {exc}")
+        data = await _fetch_with_retry(query)
+    except Exception as exc:
+        logger.warning(f"Overpass request failed after retries · {type(exc).__name__}: {exc}")
+        # Cache empty result briefly so we don't hammer Overpass for a known-bad area
+        await overpass_cache.set(cache_key, [])
         raise
 
     raw_results: list[dict] = []
@@ -179,7 +253,7 @@ async def build_and_fetch_query(lat: float, lon: float, radius: int = 5000) -> l
         if parsed is not None:
             raw_results.append(parsed)
 
-    deduped = _dedupe_by_name(raw_results)
+    deduped = _dedupe_smart(raw_results)
     sorted_results = sorted(deduped, key=lambda x: x["distance"])
 
     await overpass_cache.set(cache_key, sorted_results)

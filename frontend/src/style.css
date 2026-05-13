@@ -72,6 +72,12 @@ body {
 
 .app__logo { font-size: 24px; }
 
+.app__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .demo-picker {
   background: var(--bg-card);
   color: var(--text);
@@ -80,6 +86,60 @@ body {
   padding: 8px 12px;
   font-size: 14px;
   cursor: pointer;
+}
+
+.demo-badge {
+  background: rgba(243, 156, 18, 0.2);
+  color: var(--warning);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(243, 156, 18, 0.3);
+  margin-left: 6px;
+}
+
+.test-crash-btn {
+  background: rgba(192, 57, 43, 0.15);
+  color: #ff8b7d;
+  border: 1px solid rgba(192, 57, 43, 0.4);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.test-crash-btn:hover { background: rgba(192, 57, 43, 0.25); }
+.test-crash-btn:active { transform: scale(0.97); }
+
+/* Demo-mode toast — global, anchored to bottom */
+.roadsos-demo-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--bg-elev);
+  color: var(--text);
+  border: 1px solid var(--warning);
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  max-width: 92vw;
+  text-align: center;
+  z-index: 999;
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.roadsos-demo-toast--visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
 }
 
 /* Offline banner */
@@ -737,6 +797,44 @@ code {
 }
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* Dispatcher script box — shown in AUTOMATING and CALLING phases */
+.crash-alert__script-box {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.crash-alert__script-box--live {
+  border-color: rgba(231, 76, 60, 0.5);
+  background: rgba(231, 76, 60, 0.08);
+}
+
+.crash-alert__script-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.crash-alert__script-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin: 0;
+  font-style: italic;
+}
+
+.crash-alert__script-text--large {
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 500;
+}
 
 .crash-alert__cancel-btn {
   width: 100%;

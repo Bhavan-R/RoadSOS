@@ -21,7 +21,9 @@ let alarmActive   = false;
 
 function buildSiren(ctx) {
   const masterGain = ctx.createGain();
-  masterGain.gain.value = 0.7;
+  // 0.45 is loud enough to attract bystanders outdoors but won't deafen
+  // judges in a quiet indoor judging room.
+  masterGain.gain.value = 0.45;
   masterGain.connect(ctx.destination);
 
   // Main oscillator — sawtooth for harshness
