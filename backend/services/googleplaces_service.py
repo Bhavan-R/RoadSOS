@@ -9,6 +9,7 @@ control spend during the hackathon.
 """
 from __future__ import annotations
 
+import itertools
 import logging
 import math
 import os
@@ -24,6 +25,27 @@ logger = logging.getLogger(__name__)
 NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 FINDPLACE_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
+
+# ─── Key rotation ────────────────────────────────────────────────────────────
+# Set GOOGLE_PLACES_API_KEYS as a comma-separated list of keys on Render to
+# distribute load across multiple billing accounts. Falls back to the single
+# GOOGLE_PLACES_API_KEY for backward compatibility.
+def _load_keys() -> list[str]:
+    multi = os.getenv("GOOGLE_PLACES_API_KEYS", "")
+    keys = [k.strip() for k in multi.split(",") if k.strip()]
+    if not keys:
+        single = os.getenv("GOOGLE_PLACES_API_KEY", "")
+        keys = [single] if single else []
+    return keys
+
+_KEY_POOL: list[str] = _load_keys()
+_key_cycle = itertools.cycle(_KEY_POOL) if _KEY_POOL else None
+
+def _next_key() -> str:
+    """Round-robin across all configured API keys."""
+    if not _KEY_POOL:
+        return ""
+    return next(_key_cycle)  # type: ignore[arg-type]
 
 SEARCH_TYPES = ["hospital", "police", "car_repair", "fire_station"]
 
@@ -112,7 +134,7 @@ async def enrich_missing_phones(
     to control API spend. Mutates the contact dicts in place and returns
     the same list.
     """
-    api_key = os.getenv("GOOGLE_PLACES_API_KEY", "")
+    api_key = _next_key()
     if not api_key:
         return contacts
 
@@ -142,7 +164,7 @@ async def enrich_missing_phones(
 
 
 async def search_nearby_places(lat: float, lon: float, radius: int = 5000, region: Optional[str] = None) -> list[dict]:
-    api_key = os.getenv("GOOGLE_PLACES_API_KEY", "")
+    api_key = _next_key()
     if not api_key:
         return []
 

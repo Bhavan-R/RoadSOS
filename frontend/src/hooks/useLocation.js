@@ -121,23 +121,34 @@ export function useLocation({ onCrashDetected } = {}) {
       }
     };
 
-    // Android / desktop: add listener immediately
-    // iOS 13+: requestPermission must be called from a user gesture (via
-    // the exported requestMotionPermission helper). We attempt a silent
-    // add here which works on Android; iOS will throw and we catch it.
     const setup = async () => {
+      // iOS 13+: needs explicit requestPermission from a user gesture.
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
           const perm = await DeviceMotionEvent.requestPermission();
-          if (perm === 'granted') {
+          if (perm === 'granted') window.addEventListener('devicemotion', handleMotion);
+        } catch {
+          // No user gesture yet — GPS-only detection still works
+        }
+        return;
+      }
+
+      // Firefox / modern browsers: check Permissions API before adding listener
+      // to avoid the "motion sensor deprecated" console warning.
+      if (navigator.permissions) {
+        try {
+          const result = await navigator.permissions.query({ name: 'accelerometer' });
+          if (result.state !== 'denied') {
             window.addEventListener('devicemotion', handleMotion);
           }
+          return;
         } catch {
-          // iOS without user gesture — GPS-only detection still works
+          // Browser supports Permissions API but not 'accelerometer' query — fall through
         }
-      } else {
-        window.addEventListener('devicemotion', handleMotion);
       }
+
+      // Android / desktop Chrome — add listener directly (no permission needed)
+      window.addEventListener('devicemotion', handleMotion);
     };
 
     setup();
