@@ -145,6 +145,8 @@ export function useLocation({ onCrashDetected } = {}) {
   }, [fireCrash]);
 
   // ─── GPS watch ──────────────────────────────────────────────────────────
+  const lastReportedRef = useRef(null); // track last position we actually set
+
   useEffect(() => {
     let cancelled = false;
 
@@ -173,8 +175,28 @@ export function useLocation({ onCrashDetected } = {}) {
       (pos) => {
         clearTimeout(gpsTimeout);
         if (cancelled) return;
-        const { latitude, longitude, speed } = pos.coords;
+        const { latitude, longitude, speed, accuracy } = pos.coords;
         const speedKmh = speed != null ? mpsToKmh(speed) : 0;
+
+        // Ignore very inaccurate first fixes (network/wifi positioning artefacts).
+        // accuracy is in metres — skip if worse than 200 m and we already have a fix.
+        if (accuracy > 200 && locationRef.current?.source === 'gps') return;
+
+        // Distance gate: skip tiny GPS jitter updates (< 50 m moved).
+        // Prevents constant re-searches from floating-point drift.
+        const prev = lastReportedRef.current;
+        if (prev) {
+          const dLat = (latitude - prev.lat) * 111_000;
+          const dLon = (longitude - prev.lon) * 111_000 * Math.cos(latitude * Math.PI / 180);
+          const distM = Math.sqrt(dLat * dLat + dLon * dLon);
+          if (distM < 50) {
+            // Still feed velocity data for crash detection without re-rendering
+            if (onCrashDetected && speed != null) checkVelocityCollapse(speedKmh, pos.timestamp);
+            return;
+          }
+        }
+
+        lastReportedRef.current = { lat: latitude, lon: longitude };
         setLocation({ lat: latitude, lon: longitude, speedKmh, source: 'gps' });
         setLoading(false);
         setError(null);
@@ -195,7 +217,10 @@ export function useLocation({ onCrashDetected } = {}) {
           setLoading(false);
         }
       },
-      { enableHighAccuracy: true, timeout: GPS_TIMEOUT_MS, maximumAge: 5000 }
+      // maximumAge: 0 — never use stale cached GPS positions.
+      // A 5-second-old fix could be from a totally different location
+      // (e.g. last place the phone had GPS locked), causing the "bounce".
+      { enableHighAccuracy: true, timeout: GPS_TIMEOUT_MS, maximumAge: 0 }
     );
 
     return () => {

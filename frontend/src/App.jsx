@@ -54,41 +54,55 @@ export default function App() {
   const [triageLoading, setTriageLoading] = useState(false);
   const [triaged, setTriaged] = useState(false);
 
-  // Run the search whenever active location changes
+  // Round to 2 decimal places (~1 km grid) so GPS jitter never triggers
+  // a redundant search. The distance gate in useLocation handles <50 m moves;
+  // this is a second layer of defence at the search level.
+  const searchLat = activeLocation ? Math.round(activeLocation.lat * 100) / 100 : null;
+  const searchLon = activeLocation ? Math.round(activeLocation.lon * 100) / 100 : null;
+
+  // Run the search whenever the rounded location changes
   useEffect(() => {
-    if (!activeLocation) return;
+    if (searchLat == null || searchLon == null) return;
 
     let cancelled = false;
     setSearchLoading(true);
     setSearchError(null);
     setCachedAt(null);
 
+    // Hard 30-second timeout so a cold Render backend never leaves the
+    // spinner stuck forever. (Backend itself retries Overpass up to ~21 s.)
+    const controller = new AbortController();
+    const hardTimeout = setTimeout(() => controller.abort(), 30_000);
+
     (async () => {
       try {
-        const data = await searchNearby(activeLocation.lat, activeLocation.lon);
+        const data = await searchNearby(searchLat, searchLon, controller.signal);
         if (cancelled) return;
         setSearchData(data);
         setTriaged(false);
         setTriageOpen(true);
-        saveSearchResult(activeLocation.lat, activeLocation.lon, data);
+        saveSearchResult(searchLat, searchLon, data);
       } catch (err) {
         if (cancelled) return;
-        const cached = loadSearchResult(activeLocation.lat, activeLocation.lon);
+        const cached = loadSearchResult(searchLat, searchLon);
         if (cached) {
           setSearchData(cached);
           setCachedAt(cached.cachedAt);
           setTriaged(false);
           setTriageOpen(true);
         } else {
-          setSearchError(isOnline ? 'Could not fetch nearby services.' : 'You are offline and have no cached results for this location.');
+          setSearchError(isOnline
+            ? 'Could not fetch nearby services. Please try again.'
+            : 'You are offline and have no cached results for this location.');
         }
       } finally {
+        clearTimeout(hardTimeout);
         if (!cancelled) setSearchLoading(false);
       }
     })();
 
-    return () => { cancelled = true; };
-  }, [activeLocation?.lat, activeLocation?.lon]);
+    return () => { cancelled = true; controller.abort(); clearTimeout(hardTimeout); };
+  }, [searchLat, searchLon]);
 
   const handleTriage = useCallback(async ({ injured, blocking }) => {
     if (!searchData?.contacts?.length) return;
