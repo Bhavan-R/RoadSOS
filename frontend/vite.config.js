@@ -30,9 +30,11 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/search': 'http://localhost:8000',
-      '/triage': 'http://localhost:8000',
-      '/offline-pack': 'http://localhost:8000',
+      '/search'          : 'http://localhost:8000',
+      '/triage'          : 'http://localhost:8000',
+      '/dispatch-summary': 'http://localhost:8000',
+      '/health'          : 'http://localhost:8000',
+      '/offline-pack'    : 'http://localhost:8000',
     },
   },
 });
