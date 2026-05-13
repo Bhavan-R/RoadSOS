@@ -19,7 +19,7 @@ import logging
 from fastapi import APIRouter, Depends, Query, Request
 
 from services.geocoder import reverse_geocode
-from services.googleplaces_service import search_nearby_places
+from services.googleplaces_service import enrich_missing_phones, search_nearby_places
 from services.overpass_service import build_and_fetch_query
 from services.phone_utils import phones_match
 from services.rate_limiter import get_client_ip, search_limiter
@@ -91,8 +91,12 @@ async def search_facilities(
         logger.warning("Geocode failed: %s", exc)
         geo = {"landmark": f"{lat:.4f}°, {lon:.4f}°", "country_code": None}
 
-    # ─── Google Places fallback (only if we still need more contacts) ────
-    if len(contacts) < 3:
+    # ─── Google Places fallback ──────────────────────────────────────────
+    # Trigger when fewer than 3 contacts have a *dialable phone* (not just
+    # total contact count). OSM often returns dozens of pins for an area
+    # but most have no phone tag — useless for an emergency app.
+    phoned = [c for c in contacts if c.get("phone")]
+    if len(phoned) < 3:
         try:
             google = await search_nearby_places(
                 lat, lon, radius=10000, region=geo.get("country_code")
@@ -109,6 +113,15 @@ async def search_facilities(
         contacts.sort(key=lambda x: x.get("distance", float("inf")))
     except Exception:
         pass  # malformed contact shouldn't break the response
+
+    # ─── Phone enrichment ────────────────────────────────────────────────
+    # For the closest contacts that are missing a phone, look them up by
+    # name + location via Google Place Details. Capped to control API cost.
+    # No-op if GOOGLE_PLACES_API_KEY is not configured.
+    try:
+        contacts = await enrich_missing_phones(contacts, region=geo.get("country_code"), max_lookups=6)
+    except Exception as exc:
+        logger.warning("Phone enrichment failed: %s", exc)
 
     return {
         "contacts": contacts,

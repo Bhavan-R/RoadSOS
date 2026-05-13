@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
+FINDPLACE_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
 
 SEARCH_TYPES = ["hospital", "police", "car_repair", "fire_station"]
 
@@ -64,6 +65,80 @@ async def _get_place_details(client: httpx.AsyncClient, place_id: str, api_key: 
         }
     except Exception:
         return {"phone": None, "isOpen": None}
+
+
+async def enrich_phone_for_contact(
+    client: httpx.AsyncClient,
+    name: str,
+    lat: float,
+    lon: float,
+    api_key: str,
+    region: Optional[str],
+) -> Optional[str]:
+    """Find a phone number for an existing contact by name + location.
+
+    Uses Google's Find Place from Text API (cheap, single result), then
+    Place Details for the phone. Returns None if anything fails or no
+    phone is available.
+    """
+    try:
+        resp = await client.get(FINDPLACE_URL, params={
+            "input": name,
+            "inputtype": "textquery",
+            "locationbias": f"circle:2000@{lat},{lon}",
+            "fields": "place_id",
+            "key": api_key,
+        }, timeout=8.0)
+        candidates = resp.json().get("candidates", [])
+        if not candidates:
+            return None
+        place_id = candidates[0].get("place_id")
+        if not place_id:
+            return None
+        details = await _get_place_details(client, place_id, api_key, region)
+        return details.get("phone")
+    except Exception:
+        return None
+
+
+async def enrich_missing_phones(
+    contacts: list[dict],
+    region: Optional[str],
+    max_lookups: int = 6,
+) -> list[dict]:
+    """Look up missing phone numbers for the top contacts via Google.
+
+    Only enriches contacts that are missing a phone, capped at `max_lookups`
+    to control API spend. Mutates the contact dicts in place and returns
+    the same list.
+    """
+    api_key = os.getenv("GOOGLE_PLACES_API_KEY", "")
+    if not api_key:
+        return contacts
+
+    # Sort by distance ascending so we enrich the closest places first.
+    sorted_contacts = sorted(contacts, key=lambda c: c.get("distance", float("inf")))
+    needs_phone = [c for c in sorted_contacts if not c.get("phone") and c.get("name")][:max_lookups]
+    if not needs_phone:
+        return contacts
+
+    logger.info(f"Enriching {len(needs_phone)} contacts with Google phone lookup")
+    enriched_count = 0
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        for c in needs_phone:
+            phone = await enrich_phone_for_contact(
+                client,
+                c["name"],
+                c.get("lat", 0),
+                c.get("lon", 0),
+                api_key,
+                region,
+            )
+            if phone:
+                c["phone"] = phone
+                enriched_count += 1
+    logger.info(f"Phone enrichment: {enriched_count}/{len(needs_phone)} found")
+    return contacts
 
 
 async def search_nearby_places(lat: float, lon: float, radius: int = 5000, region: Optional[str] = None) -> list[dict]:
