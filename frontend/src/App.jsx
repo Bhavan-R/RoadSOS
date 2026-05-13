@@ -131,11 +131,11 @@ export default function App() {
   const [triageLoading, setTriageLoading] = useState(false);
   const [triaged, setTriaged] = useState(false);
 
-  // Round to 2 decimal places (~1 km grid) so GPS jitter never triggers
-  // a redundant search. The distance gate in useLocation handles <50 m moves;
-  // this is a second layer of defence at the search level.
-  const searchLat = activeLocation ? Math.round(activeLocation.lat * 100) / 100 : null;
-  const searchLon = activeLocation ? Math.round(activeLocation.lon * 100) / 100 : null;
+  // Use precise coordinates — the 50 m distance gate in useLocation already
+  // prevents jitter-induced re-renders. Sending precise lat/lon gives the
+  // backend the best chance of finding real nearby services.
+  const searchLat = activeLocation?.lat ?? null;
+  const searchLon = activeLocation?.lon ?? null;
 
   // ── Run search whenever the location changes ────────────────────
   useEffect(() => {
