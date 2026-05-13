@@ -9,9 +9,7 @@ services:
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: GOOGLE_PLACES_API_KEY
-        sync: false
-      - key: GOOGLE_PLACES_API_KEYS
+      - key: Mapsplatformkey
         sync: false
       - key: PYTHON_VERSION
         value: 3.11.9
