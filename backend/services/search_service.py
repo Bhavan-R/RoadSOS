@@ -72,17 +72,17 @@ async def search_facilities(
     _: None = Depends(_check_rate_limit),
 ):
     contacts: list[dict] = []
-    source = "Google Places"
+    source = "OpenStreetMap"
 
-    # ─── Overpass DISABLED (Using Google Places exclusively) ─────────────
-    # for radius in (5000, 10000):
-    #     if len(contacts) >= 3:
-    #         break
-    #     try:
-    #         contacts = await build_and_fetch_query(lat, lon, radius=radius)
-    #     except Exception as exc:
-    #         logger.warning("Overpass at %dm failed: %s", radius, exc)
-    #         # Don't bail — continue to wider radius / Google fallback
+    # ─── Overpass first (with internal retry + mirror fallback) ──────────
+    for radius in (5000, 10000):
+        if len(contacts) >= 3:
+            break
+        try:
+            contacts = await build_and_fetch_query(lat, lon, radius=radius)
+        except Exception as exc:
+            logger.warning("Overpass at %dm failed: %s", radius, exc)
+            # Don't bail — continue to wider radius / Google fallback
 
     # ─── Geocode ─────────────────────────────────────────────────────────
     try:
