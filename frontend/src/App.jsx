@@ -1,91 +1,91 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useLocation }  from './hooks/useLocation';
-import { useNetwork }   from './hooks/useNetwork';
+import { useLocation } from './hooks/useLocation';
+import { useNetwork } from './hooks/useNetwork';
 import { searchNearby } from './utils/overpass';
 import { triageContacts } from './utils/googlePlaces';
 import { saveSearchResult, loadSearchResult } from './utils/offlineDB';
 import { getEmergencyNumbers } from './utils/emergencyNumbers';
 
 import CountryEmergency from './components/CountryEmergency';
-import ContactList      from './components/ContactList';
-import SOSButton        from './components/SOSButton';
-import TriageModal      from './components/TriageModal';
-import OfflineBanner    from './components/OfflineBanner';
-import CrashAlert       from './components/CrashAlert';
+import ContactList from './components/ContactList';
+import SOSButton from './components/SOSButton';
+import TriageModal from './components/TriageModal';
+import OfflineBanner from './components/OfflineBanner';
+import CrashAlert from './components/CrashAlert';
 import { requestMotionPermission } from './hooks/useLocation';
 import { DEMO_MODE } from './utils/demoMode';
 import { startBackendWarmup } from './utils/backendWarmup';
 
 // ─── Demo location picker ─────────────────────────────────────────────────────
 const DEMO_LOCATIONS = [
-  { label: '📍 Use my GPS',         lat: null,     lon: null,      country: null },
-  { label: '🇮🇳 Bengaluru, India',  lat: 12.9716,  lon: 77.5946,   country: 'IN' },
-  { label: '🇮🇳 Mumbai, India',     lat: 19.0760,  lon: 72.8777,   country: 'IN' },
-  { label: '🇬🇧 London, UK',        lat: 51.5074,  lon: -0.1278,   country: 'GB' },
-  { label: '🇯🇵 Tokyo, Japan',      lat: 35.6762,  lon: 139.6503,  country: 'JP' },
-  { label: '🇩🇪 Berlin, Germany',   lat: 52.5200,  lon: 13.4050,   country: 'DE' },
+  { label: '📍 Use my GPS', lat: null, lon: null, country: null },
+  { label: '🇮🇳 Bengaluru, India', lat: 12.9716, lon: 77.5946, country: 'IN' },
+  { label: '🇮🇳 Mumbai, India', lat: 19.0760, lon: 72.8777, country: 'IN' },
+  { label: '🇬🇧 London, UK', lat: 51.5074, lon: -0.1278, country: 'GB' },
+  { label: '🇯🇵 Tokyo, Japan', lat: 35.6762, lon: 139.6503, country: 'JP' },
+  { label: '🇩🇪 Berlin, Germany', lat: 52.5200, lon: 13.4050, country: 'DE' },
 ];
 
 // ─── Mock contacts (used as fallback when backend is unreachable) ─────────────
 const MOCK_CONTACTS = [
   {
-    id:        'mock-1',
-    name:      'Apollo Hospitals, Bannerghatta',
-    category:  'hospital',
-    phone:     '080-26793000',
-    distance:  1.4,
-    source:    'Google Places',
-    isOpen:    true,
-    aiReason:  'Trauma unit available · nearest to crash location',
+    id: 'mock-1',
+    name: 'Apollo Hospitals, Bannerghatta',
+    category: 'hospital',
+    phone: '080-26793000',
+    distance: 1.4,
+    source: 'Google Places',
+    isOpen: true,
+    aiReason: 'Trauma unit available · nearest to crash location',
   },
   {
-    id:        'mock-2',
-    name:      'Jayanagar Police Station',
-    category:  'police',
-    phone:     '080-22942000',
-    distance:  2.1,
-    source:    'OpenStreetMap',
-    isOpen:    true,
-    aiReason:  null,
+    id: 'mock-2',
+    name: 'Jayanagar Police Station',
+    category: 'police',
+    phone: '080-22942000',
+    distance: 2.1,
+    source: 'OpenStreetMap',
+    isOpen: true,
+    aiReason: null,
   },
   {
-    id:        'mock-3',
-    name:      'CATS Ambulance Service',
-    category:  'ambulance',
-    phone:     '108',
-    distance:  3.0,
-    source:    'OpenStreetMap',
-    isOpen:    null,
-    aiReason:  null,
+    id: 'mock-3',
+    name: 'CATS Ambulance Service',
+    category: 'ambulance',
+    phone: '108',
+    distance: 3.0,
+    source: 'OpenStreetMap',
+    isOpen: null,
+    aiReason: null,
   },
   {
-    id:        'mock-4',
-    name:      'Rapid Towing Services',
-    category:  'towing',
-    phone:     '9845012345',
-    distance:  3.8,
-    source:    'Google Places',
-    isOpen:    true,
-    aiReason:  null,
+    id: 'mock-4',
+    name: 'Rapid Towing Services',
+    category: 'towing',
+    phone: '9845012345',
+    distance: 3.8,
+    source: 'Google Places',
+    isOpen: true,
+    aiReason: null,
   },
   {
-    id:        'mock-5',
-    name:      'Sri Auto Repairs',
-    category:  'repair',
-    phone:     '9900887766',
-    distance:  4.5,
-    source:    'OpenStreetMap',
-    isOpen:    false,
-    aiReason:  null,
+    id: 'mock-5',
+    name: 'Sri Auto Repairs',
+    category: 'repair',
+    phone: '9900887766',
+    distance: 4.5,
+    source: 'OpenStreetMap',
+    isOpen: false,
+    aiReason: null,
   },
 ];
 
 const MOCK_DATA = {
-  contacts:     MOCK_CONTACTS,
-  landmark:     'Bannerghatta Road, BTM Layout, Bengaluru, Karnataka (MOCK)',
+  contacts: MOCK_CONTACTS,
+  landmark: 'Bannerghatta Road, BTM Layout, Bengaluru, Karnataka (MOCK)',
   country_code: 'IN',
-  source:       'Mock data',
-  count:        MOCK_CONTACTS.length,
+  source: 'Mock data',
+  count: MOCK_CONTACTS.length,
 };
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -99,8 +99,8 @@ export default function App() {
   // GPS hook
   const {
     location: gpsLocation,
-    error:    gpsError,
-    loading:  gpsLoading,
+    error: gpsError,
+    loading: gpsLoading,
   } = useLocation({ onCrashDetected: () => setCrashOpen(true) });
 
   const isOnline = useNetwork();
@@ -121,15 +121,15 @@ export default function App() {
   }, [demoIdx, gpsLocation]);
 
   // ── Search state ───────────────────────────────────────────────────────
-  const [searchData,    setSearchData]    = useState(null);
+  const [searchData, setSearchData] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError,   setSearchError]   = useState(null);
-  const [cachedAt,      setCachedAt]      = useState(null);
+  const [searchError, setSearchError] = useState(null);
+  const [cachedAt, setCachedAt] = useState(null);
 
   // ── Triage state ───────────────────────────────────────────────────────
-  const [triageOpen,    setTriageOpen]    = useState(false);
+  const [triageOpen, setTriageOpen] = useState(false);
   const [triageLoading, setTriageLoading] = useState(false);
-  const [triaged,       setTriaged]       = useState(false);
+  const [triaged, setTriaged] = useState(false);
 
   // Round to 2 decimal places (~1 km grid) so GPS jitter never triggers
   // a redundant search. The distance gate in useLocation handles <50 m moves;
@@ -137,7 +137,7 @@ export default function App() {
   const searchLat = activeLocation ? Math.round(activeLocation.lat * 100) / 100 : null;
   const searchLon = activeLocation ? Math.round(activeLocation.lon * 100) / 100 : null;
 
-  // ── Run search whenever the rounded location changes ────────────────────
+  // ── Run search whenever the location changes ────────────────────
   useEffect(() => {
     if (searchLat == null || searchLon == null) return;
 
@@ -206,8 +206,8 @@ export default function App() {
 
   // ── Derived values ─────────────────────────────────────────────────────
   const countryCode = searchData?.country_code || activeLocation?.country_code || 'IN';
-  const numbers     = getEmergencyNumbers(countryCode);
-  const topContact  = searchData?.contacts?.[0];
+  const numbers = getEmergencyNumbers(countryCode);
+  const topContact = searchData?.contacts?.[0];
 
   // ── iOS motion permission ──────────────────────────────────────────────
   const handleMotionPermissionOnce = useCallback(() => {
