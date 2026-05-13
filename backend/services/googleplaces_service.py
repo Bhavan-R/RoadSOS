@@ -30,7 +30,6 @@ FINDPLACE_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/js
 # Set Mapsplatformkey as a comma-separated list of keys on Render to
 # distribute load across multiple billing accounts.
 def _load_keys() -> list[str]:
-    import os
     multi = os.getenv("Mapsplatformkey", "")
     keys = [k.strip() for k in multi.split(",") if k.strip()]
     if not keys:
