@@ -34,7 +34,7 @@ def _load_keys() -> list[str]:
     multi = os.getenv("GOOGLE_PLACES_API_KEYS", "")
     keys = [k.strip() for k in multi.split(",") if k.strip()]
     if not keys:
-        single = os.getenv("GOOGLE_PLACES_API_KEY", "")
+        single = os.getenv("GOOGLE_PLACES_API_KEY", "") or os.getenv("Mapsplatformkey", "")
         keys = [single] if single else []
     return keys
 
