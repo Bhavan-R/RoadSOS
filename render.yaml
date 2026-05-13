@@ -10,6 +10,6 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: Mapsplatformkey
-        sync: false
+        sync: false  # Google Places API key (Render naming convention)
       - key: PYTHON_VERSION
         value: 3.11.9
