@@ -98,16 +98,29 @@ class TestParseElement:
         assert result is not None
         assert result["category"] == "police"
 
-    def test_name_fallback(self):
+    def test_name_fallback_requires_phone(self):
+        # New reliability hardening: an entry with neither a real name nor
+        # a dialable phone is useless — drop it. To keep the fallback name
+        # path covered, we provide a phone so it survives the guard.
         element = {
             "id": 1,
             "lat": 12.98,
             "lon": 77.60,
-            "tags": {"amenity": "hospital"},  # no name
+            "tags": {"amenity": "hospital", "phone": "+91 80 26303050"},
         }
         result = parse_element(element, 12.97, 77.59)
         assert result is not None
         assert "Hospital" in result["name"]
+
+    def test_unnamed_no_phone_dropped(self):
+        # Reliability guard: useless entries are filtered out
+        element = {
+            "id": 1,
+            "lat": 12.98,
+            "lon": 77.60,
+            "tags": {"amenity": "hospital"},
+        }
+        assert parse_element(element, 12.97, 77.59) is None
 
     def test_phone_normalization(self):
         element = {

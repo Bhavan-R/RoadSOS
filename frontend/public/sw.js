@@ -52,3 +52,10 @@ registerRoute(
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
+
+// Activate immediately so the latest build is in control — critical during
+// a judging session where stale caches could serve an older broken build.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});

@@ -1,4 +1,5 @@
 import React from 'react';
+import { guardedTelDial } from '../utils/demoMode';
 
 const CATEGORY_LABELS = {
   hospital:  '🏥 Hospital',
@@ -73,9 +74,9 @@ export default function ContactCard({ contact, isTop }) {
           id={`call-btn-${phoneClean}`}
           role="button"
           aria-label={`Call ${name} at ${phone}`}
+          onClick={(e) => guardedTelDial(e, phoneClean, name)}
         >
-          <span aria-hidden="true">📞</span>
-          Call {phone}
+          <span aria-hidden="true">📞</span> Call {phone}
         </a>
       ) : (
         <div className="call-button call-button--disabled">

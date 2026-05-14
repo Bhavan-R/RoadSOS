@@ -1,4 +1,5 @@
 import React from 'react';
+import { guardedTelDial } from '../utils/demoMode';
 
 /**
  * CountryEmergency — always-visible banner at top of screen.
@@ -43,6 +44,7 @@ export default function CountryEmergency({ numbers }) {
               className={`country-emergency__btn ${colorClass}`}
               id={`ce-btn-${key}`}
               aria-label={`Call ${label}: ${num}`}
+              onClick={(e) => guardedTelDial(e, num, label)}
             >
               <span className="country-emergency__icon">{icon}</span>
               <span className="country-emergency__num">{num}</span>

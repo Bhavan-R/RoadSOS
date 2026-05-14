@@ -61,7 +61,12 @@ def to_tel_href(phone: Optional[str]) -> Optional[str]:
 
 
 def is_dialable(phone: Optional[str]) -> bool:
-    """Heuristic check that a phone string has between 3 and 15 digits."""
+    """Heuristic check that a phone string is plausible to dial.
+
+    Range 3-15 digits per ITU-T E.164. Short 3-4 digit numbers are kept
+    valid because national emergency lines (108, 112, 911, 000) fall in
+    that range — losing them would be worse than admitting false positives.
+    """
     if not phone:
         return False
     digits = re.sub(r"[^\d]", "", phone)

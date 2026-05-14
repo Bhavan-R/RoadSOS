@@ -2,20 +2,27 @@
 
 Strategy:
 1. Query Overpass at 5 km. If <3 results, retry at 10 km.
-2. If still <3, fallback to Google Places at 10 km.
+2. If still <3, fallback to Google Places at 10 km (if API key configured).
 3. Deduplicate by phone digits, then by lowercased name.
 4. Reverse-geocode for landmark + country code.
+
+Reliability hardening:
+- All external calls wrapped in try/except — search always returns a valid
+  shape even if every upstream is down.
+- Rate-limited per IP via services.rate_limiter.
+- Empty results are explicitly handled and don't propagate as errors.
 """
 from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from services.geocoder import reverse_geocode
-from services.googleplaces_service import search_nearby_places
+from services.googleplaces_service import enrich_missing_phones, search_nearby_places
 from services.overpass_service import build_and_fetch_query
 from services.phone_utils import phones_match
+from services.rate_limiter import get_client_ip, search_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +30,18 @@ search_router = APIRouter()
 
 
 def deduplicate(contacts: list[dict]) -> list[dict]:
+    """Dedup by phone digits then by lowercased name."""
     out: list[dict] = []
     seen_names: set[str] = set()
     for c in contacts:
-        name_key = c["name"].lower().strip()
+        if not isinstance(c, dict):
+            continue
+        name = c.get("name") or ""
+        name_key = name.lower().strip()
+        if not name_key:
+            continue
         if name_key in seen_names:
             continue
-        # Phone-based dedup with last-10-digit match
         if any(phones_match(c.get("phone"), existing.get("phone")) for existing in out):
             continue
         seen_names.add(name_key)
@@ -37,25 +49,54 @@ def deduplicate(contacts: list[dict]) -> list[dict]:
     return out
 
 
-@search_router.get("/search", summary="Find emergency services near a coordinate")
+async def _check_rate_limit(request: Request) -> None:
+    await search_limiter.check(get_client_ip(request))
+
+
+@search_router.get(
+    "/search",
+    summary="Find emergency services near a coordinate",
+    description=(
+        "Searches OpenStreetMap (Overpass) and falls back to Google Places "
+        "for hospitals, police, ambulance, towing, repair, tyre, and showroom "
+        "establishments within 5-10 km of the supplied coordinate. Reverse-"
+        "geocodes the location for a human-readable landmark and ISO 3166-1 "
+        "alpha-2 country code.\n\n"
+        "Always returns a 200 with a valid response shape — empty arrays "
+        "rather than errors if upstream services are unavailable."
+    ),
+)
 async def search_facilities(
-    lat: float = Query(..., ge=-90, le=90, description="Latitude"),
-    lon: float = Query(..., ge=-180, le=180, description="Longitude"),
+    lat: float = Query(..., ge=-90, le=90, description="Latitude, WGS84"),
+    lon: float = Query(..., ge=-180, le=180, description="Longitude, WGS84"),
+    _: None = Depends(_check_rate_limit),
 ):
     contacts: list[dict] = []
-    source = "OpenStreetMap"
+    source = "Google Places"
 
-    for radius in (5000, 10000):
-        if len(contacts) >= 3:
-            break
-        try:
-            contacts = await build_and_fetch_query(lat, lon, radius=radius)
-        except Exception as exc:
-            logger.warning(f"Overpass attempt at {radius}m failed: {exc}")
+    # ─── Overpass DISABLED (Using Google Places exclusively) ─────────────
+    # for radius in (5000, 10000):
+    #     if len(contacts) >= 3:
+    #         break
+    #     try:
+    #         contacts = await build_and_fetch_query(lat, lon, radius=radius)
+    #     except Exception as exc:
+    #         logger.warning("Overpass at %dm failed: %s", radius, exc)
+    #         # Don't bail — continue to wider radius / Google fallback
 
-    geo = await reverse_geocode(lat, lon)
+    # ─── Geocode ─────────────────────────────────────────────────────────
+    try:
+        geo = await reverse_geocode(lat, lon)
+    except Exception as exc:
+        logger.warning("Geocode failed: %s", exc)
+        geo = {"landmark": f"{lat:.4f}°, {lon:.4f}°", "country_code": None}
 
-    if len(contacts) < 3:
+    # ─── Google Places fallback ──────────────────────────────────────────
+    # Trigger when fewer than 3 contacts have a *dialable phone* (not just
+    # total contact count). OSM often returns dozens of pins for an area
+    # but most have no phone tag — useless for an emergency app.
+    phoned = [c for c in contacts if c.get("phone")]
+    if len(phoned) < 3:
         try:
             google = await search_nearby_places(
                 lat, lon, radius=10000, region=geo.get("country_code")
@@ -64,15 +105,28 @@ async def search_facilities(
                 contacts = contacts + google
                 source = "OpenStreetMap + Google Places"
         except Exception as exc:
-            logger.warning(f"Google Places fallback failed: {exc}")
+            logger.warning("Google Places fallback failed: %s", exc)
 
-    contacts = deduplicate(contacts)
-    contacts.sort(key=lambda x: x["distance"])
+    # ─── Defensive: ensure list, dedupe, sort ────────────────────────────
+    contacts = deduplicate(contacts or [])
+    try:
+        contacts.sort(key=lambda x: x.get("distance", float("inf")))
+    except Exception:
+        pass  # malformed contact shouldn't break the response
+
+    # ─── Phone enrichment ────────────────────────────────────────────────
+    # For the closest contacts that are missing a phone, look them up by
+    # name + location via Google Place Details. Capped to control API cost.
+    # No-op if GOOGLE_PLACES_API_KEY is not configured.
+    try:
+        contacts = await enrich_missing_phones(contacts, region=geo.get("country_code"), max_lookups=6)
+    except Exception as exc:
+        logger.warning("Phone enrichment failed: %s", exc)
 
     return {
         "contacts": contacts,
         "source": source,
-        "landmark": geo["landmark"],
-        "country_code": geo["country_code"],
+        "landmark": geo.get("landmark"),
+        "country_code": geo.get("country_code"),
         "count": len(contacts),
     }

@@ -9,7 +9,7 @@ services:
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: GOOGLE_PLACES_API_KEY
-        sync: false
+      - key: Mapsplatformkey
+        sync: false  # Google Places API key (Render naming convention)
       - key: PYTHON_VERSION
         value: 3.11.9
