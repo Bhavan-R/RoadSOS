@@ -884,3 +884,109 @@ code {
 .crash-call-btn--ambulance { background: var(--warning); color: #000; }
 .crash-call-btn--police    { background: var(--info); }
 .crash-call-btn--general   { background: var(--accent); }
+
+/* ─── Plan Trip button (header) ────────────────────────────────────────── */
+.plan-trip-btn {
+  background: linear-gradient(135deg, #2c5364, #203a43);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.plan-trip-btn:hover  { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(44,83,100,0.4); }
+.plan-trip-btn:active { transform: translateY(0); }
+
+/* ─── Route Planner modal ──────────────────────────────────────────────── */
+.route-planner__form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+.route-planner__field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.route-planner__field-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.route-planner__field select {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  outline: none;
+}
+.route-planner__field select:focus { border-color: var(--accent); }
+.route-planner__field select:disabled { opacity: 0.5; }
+.route-planner__arrow {
+  font-size: 22px;
+  font-weight: 700;
+  padding-bottom: 10px;
+  color: var(--accent);
+}
+.route-planner__hint {
+  font-size: 13px;
+  margin: 4px 0;
+  opacity: 0.75;
+}
+.route-planner__hint--warn { color: #f39c12; }
+
+.route-planner__progress {
+  margin: 16px 0;
+}
+.route-planner__progress-label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  opacity: 0.9;
+}
+.route-planner__progress-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.route-planner__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  transition: width 0.35s ease;
+  border-radius: 6px;
+}
+
+.route-planner__result {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.route-planner__result--ok {
+  background: rgba(39,174,96,0.12);
+  border: 1px solid rgba(39,174,96,0.35);
+  color: #c5f0d4;
+}
+.route-planner__result--err {
+  background: rgba(192,57,43,0.15);
+  border: 1px solid rgba(192,57,43,0.4);
+  color: #ffc6c0;
+}
+.route-planner__result-sub {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 4px;
+}

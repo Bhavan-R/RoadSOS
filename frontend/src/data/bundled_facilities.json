@@ -1,0 +1,264 @@
+[
+  {
+    "id": "bf-cmc-vellore",
+    "name": "Christian Medical College (CMC) Vellore",
+    "category": "hospital",
+    "lat": 12.9226,
+    "lon": 79.1366,
+    "phone": "+91 416 228 1000",
+    "country_code": "IN",
+    "notes": "Tertiary trauma centre, 24/7 emergency"
+  },
+  {
+    "id": "bf-apollo-greams-chennai",
+    "name": "Apollo Hospitals, Greams Road, Chennai",
+    "category": "hospital",
+    "lat": 13.0612,
+    "lon": 80.2438,
+    "phone": "+91 44 2829 3333",
+    "country_code": "IN",
+    "notes": "Trauma + cardiac unit"
+  },
+  {
+    "id": "bf-miot-chennai",
+    "name": "MIOT International, Chennai",
+    "category": "hospital",
+    "lat": 13.0226,
+    "lon": 80.1899,
+    "phone": "+91 44 4200 2288",
+    "country_code": "IN",
+    "notes": "Multi-specialty, 24/7 emergency"
+  },
+  {
+    "id": "bf-srmc-porur-chennai",
+    "name": "Sri Ramachandra Medical Centre, Chennai",
+    "category": "hospital",
+    "lat": 13.0397,
+    "lon": 80.1535,
+    "phone": "+91 44 4592 8500",
+    "country_code": "IN",
+    "notes": "Trauma centre, teaching hospital"
+  },
+  {
+    "id": "bf-stanley-chennai",
+    "name": "Govt. Stanley Medical College Hospital, Chennai",
+    "category": "hospital",
+    "lat": 13.1066,
+    "lon": 80.2925,
+    "phone": "+91 44 2528 9595",
+    "country_code": "IN",
+    "notes": "Government tertiary, free care"
+  },
+  {
+    "id": "bf-rgggh-chennai",
+    "name": "Rajiv Gandhi Govt General Hospital, Chennai",
+    "category": "hospital",
+    "lat": 13.0825,
+    "lon": 80.2750,
+    "phone": "+91 44 2530 5000",
+    "country_code": "IN",
+    "notes": "Largest govt hospital in TN"
+  },
+  {
+    "id": "bf-jipmer-puducherry",
+    "name": "JIPMER, Puducherry",
+    "category": "hospital",
+    "lat": 11.9530,
+    "lon": 79.7714,
+    "phone": "+91 413 2272 380",
+    "country_code": "IN",
+    "notes": "Institute of national importance"
+  },
+  {
+    "id": "bf-psg-coimbatore",
+    "name": "PSG Hospitals, Coimbatore",
+    "category": "hospital",
+    "lat": 11.0245,
+    "lon": 76.9637,
+    "phone": "+91 422 2570 170",
+    "country_code": "IN",
+    "notes": "Multi-specialty, trauma"
+  },
+  {
+    "id": "bf-kmch-coimbatore",
+    "name": "Kovai Medical Center Hospital (KMCH), Coimbatore",
+    "category": "hospital",
+    "lat": 11.0150,
+    "lon": 76.9700,
+    "phone": "+91 422 4324 324",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-mmc-madurai",
+    "name": "Madurai Medical College Hospital",
+    "category": "hospital",
+    "lat": 9.9180,
+    "lon": 78.1184,
+    "phone": "+91 452 2532 535",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-tmc-tirunelveli",
+    "name": "Tirunelveli Medical College Hospital",
+    "category": "hospital",
+    "lat": 8.7139,
+    "lon": 77.7567,
+    "phone": "+91 462 2572 733",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-trichy-govt",
+    "name": "Govt. Mahatma Gandhi Memorial Hospital, Trichy",
+    "category": "hospital",
+    "lat": 10.8175,
+    "lon": 78.6831,
+    "phone": "+91 431 2700 088",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-salem-mkmmc",
+    "name": "Mohan Kumaramangalam Medical College, Salem",
+    "category": "hospital",
+    "lat": 11.6643,
+    "lon": 78.1460,
+    "phone": "+91 427 2383 684",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-erode-govt",
+    "name": "Govt. Erode Medical College Hospital",
+    "category": "hospital",
+    "lat": 11.3410,
+    "lon": 77.7172,
+    "phone": null,
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-vellore-govt",
+    "name": "Vellore Govt Medical College Hospital",
+    "category": "hospital",
+    "lat": 12.9165,
+    "lon": 79.1325,
+    "phone": null,
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-chennai-cp",
+    "name": "Chennai City Police Commissioner",
+    "category": "police",
+    "lat": 13.0786,
+    "lon": 80.2806,
+    "phone": "+91 44 2345 2300",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-aiims-delhi",
+    "name": "AIIMS New Delhi",
+    "category": "hospital",
+    "lat": 28.5672,
+    "lon": 77.2100,
+    "phone": "+91 11 2658 8500",
+    "country_code": "IN",
+    "notes": "National referral trauma centre"
+  },
+  {
+    "id": "bf-safdarjung-delhi",
+    "name": "Safdarjung Hospital, Delhi",
+    "category": "hospital",
+    "lat": 28.5703,
+    "lon": 77.2080,
+    "phone": "+91 11 2673 0000",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-aiims-trauma-delhi",
+    "name": "JPN Apex Trauma Centre, AIIMS Delhi",
+    "category": "hospital",
+    "lat": 28.5680,
+    "lon": 77.2080,
+    "phone": "+91 11 2659 3308",
+    "country_code": "IN",
+    "notes": "Apex trauma referral hospital"
+  },
+  {
+    "id": "bf-kem-mumbai",
+    "name": "KEM Hospital, Mumbai",
+    "category": "hospital",
+    "lat": 19.0048,
+    "lon": 72.8412,
+    "phone": "+91 22 2410 7000",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-sion-mumbai",
+    "name": "Lokmanya Tilak (Sion) Hospital, Mumbai",
+    "category": "hospital",
+    "lat": 19.0421,
+    "lon": 72.8615,
+    "phone": "+91 22 2407 6381",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-nimhans-bengaluru",
+    "name": "NIMHANS, Bengaluru",
+    "category": "hospital",
+    "lat": 12.9410,
+    "lon": 77.5944,
+    "phone": "+91 80 2699 5001",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-manipal-blr",
+    "name": "Manipal Hospital, Old Airport Road, Bengaluru",
+    "category": "hospital",
+    "lat": 12.9594,
+    "lon": 77.6491,
+    "phone": "+91 80 2502 4444",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-victoria-bengaluru",
+    "name": "Victoria Hospital, Bengaluru",
+    "category": "hospital",
+    "lat": 12.9605,
+    "lon": 77.5742,
+    "phone": "+91 80 2670 1150",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-nims-hyderabad",
+    "name": "NIMS Hyderabad",
+    "category": "hospital",
+    "lat": 17.4297,
+    "lon": 78.4439,
+    "phone": "+91 40 2348 9000",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-osmania-hyderabad",
+    "name": "Osmania General Hospital, Hyderabad",
+    "category": "hospital",
+    "lat": 17.3823,
+    "lon": 78.4778,
+    "phone": "+91 40 2460 0146",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-pgimer-chandigarh",
+    "name": "PGIMER Chandigarh",
+    "category": "hospital",
+    "lat": 30.7651,
+    "lon": 76.7745,
+    "phone": "+91 172 2755 555",
+    "country_code": "IN"
+  },
+  {
+    "id": "bf-cmc-ludhiana",
+    "name": "Christian Medical College, Ludhiana",
+    "category": "hospital",
+    "lat": 30.9101,
+    "lon": 75.8573,
+    "phone": "+91 161 2115 555",
+    "country_code": "IN"
+  }
+]

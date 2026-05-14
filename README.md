@@ -72,8 +72,8 @@ Two simple questions — *injured? blocking traffic?* — and an LLM reorders th
 <tr>
 <td>
 
-### 📶 Genuinely Offline
-Service Worker caches API responses. National emergency numbers are bundled in the app for **196 countries** (global coverage) — they work with the SIM removed. Cached results show their timestamp.
+### 📶 Genuinely Offline (5-layer)
+Service Worker + localStorage + **Plan-a-Trip pre-cache** + **bundled 28-facility trauma directory** + bundled 196-country national numbers. Pre-fetch hospitals along Chennai→Bengaluru before you leave, then crash anywhere on NH-44 — the right number is still there.
 
 </td>
 <td>
@@ -547,7 +547,7 @@ The hackathon scores submissions on five criteria. Here is how RoadSOS addresses
 |---|---|
 | **Reliability & data accuracy** | Dual-source (OSM + Google Places fired in **parallel**) with provenance badge on every card. `tel:` links use raw E.164-normalised phone numbers. 4-layer fallback: Overpass mirrors → Google Places → bundled MOCK_DATA → national numbers always visible. |
 | **Number of contacts fetched** | Eight OSM categories + four Google categories queried in parallel. Auto-expand from 5km → 10km radius. Top-6 phoneless contacts get a Google Place Details lookup for missing phones. Typical urban query: 10–15 contacts. |
-| **Offline functionality** | Three-layer offline cache: Workbox Service Worker (same-origin dev) + localStorage app cache (24h TTL, 1km grid) + **bundled 196-country emergency number database**. Triage works offline too — client-side rule-based fallback mirrors backend logic exactly. National numbers work with SIM removed. |
+| **Offline functionality** | **Five-layer offline cache** designed for highway dead zones: (1) Workbox Service Worker, (2) localStorage app cache, (3) **🆕 Route pre-cache** — user picks origin+destination *before* leaving home, app pulls the OSRM driving polyline, samples 6 waypoints and seeds `/search` for each, (4) **🆕 Bundled directory** — 28 verified Indian trauma centres (TN-heavy) + Delhi/Mumbai/Bengaluru/Hyderabad metros searched spatially when nothing else hits, (5) bundled 196-country national emergency numbers. Triage also works offline — client-side rule engine mirrors backend logic. |
 | **Innovation & features** | AI triage with **visible** reasoning, GPS velocity crash detection with PIN-cancel safety layer, WhatsApp deep link broadcast, demo location picker. |
 | **International integration** | 196 countries pre-loaded. ISO country code from reverse geocoding switches numbers automatically. Demo picker proves it works in London, Tokyo, Berlin, etc. |
 

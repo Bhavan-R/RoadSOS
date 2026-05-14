@@ -12,9 +12,11 @@ import SOSButton from './components/SOSButton';
 import TriageModal from './components/TriageModal';
 import OfflineBanner from './components/OfflineBanner';
 import CrashAlert from './components/CrashAlert';
+import RoutePlanner from './components/RoutePlanner';
 import { requestMotionPermission } from './hooks/useLocation';
 import { DEMO_MODE } from './utils/demoMode';
 import { startBackendWarmup } from './utils/backendWarmup';
+import { buildBundledSearchResult, BUNDLED_FACILITY_COUNT } from './utils/bundledFacilities';
 
 // ─── Demo location picker ─────────────────────────────────────────────────────
 const DEMO_LOCATIONS = [
@@ -96,6 +98,9 @@ export default function App() {
   // Crash alert
   const [crashOpen, setCrashOpen] = useState(false);
 
+  // Trip planner modal
+  const [routePlannerOpen, setRoutePlannerOpen] = useState(false);
+
   // GPS hook
   const {
     location: gpsLocation,
@@ -164,22 +169,43 @@ export default function App() {
       } catch (err) {
         if (cancelled) return;
 
-        // Try localStorage cache first
+        // ─── Offline fallback chain ──────────────────────────────────────
+        // 1. localStorage cache (seeded by previous live searches OR by
+        //    the trip planner pre-fetching highway waypoints).
+        // 2. Bundled directory of verified Indian trauma centres + police.
+        //    Useful in deep dead zones with no prior cache.
+        // 3. MOCK_DATA — guaranteed-non-empty UI for demos and testing.
+
         const cached = loadSearchResult(searchLat, searchLon);
         if (cached) {
           setSearchData(cached);
           setCachedAt(cached.cachedAt);
           setTriageOpen(true);
         } else {
-          // Fall back to mock data so the UI is never empty
-          console.warn('[RoadSOS] Backend unreachable — using mock data:', err.message);
-          setSearchData(MOCK_DATA);
-          setTriageOpen(true);
-          setSearchError(
-            isOnline
-              ? 'Could not reach server — showing demo data.'
-              : 'You are offline — showing demo data.'
-          );
+          const bundled = buildBundledSearchResult(searchLat, searchLon, {
+            maxKm: 80,
+            limit: 8,
+          });
+          if (bundled) {
+            console.info('[RoadSOS] Live + cache miss — serving bundled directory');
+            setSearchData(bundled);
+            setTriageOpen(true);
+            setSearchError(
+              isOnline
+                ? 'Network issue — showing pre-loaded directory.'
+                : 'You are offline — showing pre-loaded directory.'
+            );
+          } else {
+            // Final fallback so the UI is never empty during a demo.
+            console.warn('[RoadSOS] Backend + cache + bundle all empty — using mock data:', err.message);
+            setSearchData(MOCK_DATA);
+            setTriageOpen(true);
+            setSearchError(
+              isOnline
+                ? 'Could not reach server — showing demo data.'
+                : 'You are offline and far from any pre-loaded facility — showing demo data.'
+            );
+          }
         }
       } finally {
         clearTimeout(hardTimeout);
@@ -231,6 +257,15 @@ export default function App() {
           {DEMO_MODE && <span className="demo-badge" title="Calls are simulated. Add ?demo=0 to enable real dialing.">🧪 DEMO</span>}
         </div>
         <div className="app__header-actions">
+          <button
+            type="button"
+            className="plan-trip-btn"
+            onClick={() => setRoutePlannerOpen(true)}
+            title={`Pre-cache emergency contacts along your route (${BUNDLED_FACILITY_COUNT} facilities also bundled offline)`}
+            id="plan-trip-btn"
+          >
+            🗺 Plan Trip
+          </button>
           {DEMO_MODE && (
             <button
               type="button"
@@ -321,6 +356,12 @@ export default function App() {
         loading={triageLoading}
         onSubmit={handleTriage}
         onSkip={() => setTriageOpen(false)}
+      />
+
+      {/* ── Route planner — pre-cache trip waypoints for offline use ── */}
+      <RoutePlanner
+        open={routePlannerOpen}
+        onClose={() => setRoutePlannerOpen(false)}
       />
 
       {/* ── Crash alert (velocity collapse detection) ── */}
