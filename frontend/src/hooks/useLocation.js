@@ -103,10 +103,35 @@ export function useLocation({ onCrashDetected } = {}) {
     // iOS 13+: requestPermission must be called from a user gesture (via
     // the exported requestMotionPermission helper). We attempt a silent
     // add here which works on Android; iOS will throw and we catch it.
-    const setup = () => {
-      // We add the listener immediately. On non-iOS devices, it starts working now.
-      // On iOS 13+, it will start firing events as soon as the user grants permission
-      // via the user-triggered requestMotionPermission() handler in SOSButton.
+    const setup = async () => {
+      // 1. iOS 13+: needs explicit requestPermission from a user gesture.
+      // This may fail silently inside an effect on first load; the listener 
+      // will be successfully added later once the SOS button is tapped.
+      if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        try {
+          const perm = await DeviceMotionEvent.requestPermission();
+          if (perm === 'granted') window.addEventListener('devicemotion', handleMotion);
+        } catch {
+          // No user gesture yet — GPS-only detection still works
+        }
+        return;
+      }
+
+      // 2. Firefox / modern browsers: check Permissions API before adding listener
+      // to avoid the "motion sensor deprecated" console warning.
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const result = await navigator.permissions.query({ name: 'accelerometer' });
+          if (result.state !== 'denied') {
+            window.addEventListener('devicemotion', handleMotion);
+          }
+          return;
+        } catch {
+          // Browser supports Permissions API but not 'accelerometer' query — fall through
+        }
+      }
+
+      // 3. Standard fallback for other browsers
       window.addEventListener('devicemotion', handleMotion);
     };
 
