@@ -103,17 +103,17 @@ export function useLocation({ onCrashDetected } = {}) {
     // iOS 13+: requestPermission must be called from a user gesture (via
     // the exported requestMotionPermission helper). We attempt a silent
     // add here which works on Android; iOS will throw and we catch it.
-    const setup = async () => {
-      if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        try {
-          const perm = await DeviceMotionEvent.requestPermission();
-          if (perm === 'granted') {
-            window.addEventListener('devicemotion', handleMotion);
-          }
-        } catch {
-          // iOS without user gesture — GPS-only detection still works
-        }
+    const setup = () => {
+      // iOS 13+ requires explicit permission via a user gesture.
+      // We don't call .requestPermission() here because this is an effect (not a gesture).
+      // If permission was already granted in a previous session or by a gesture handler
+      // elsewhere, adding the listener will work. If not, it just won't fire.
+      if (typeof DeviceMotionEvent.requestPermission !== 'function') {
+        window.addEventListener('devicemotion', handleMotion);
       } else {
+        // iOS 13+: only add if already granted (silent check)
+        // Note: we can't 'check' without 'requesting', but we can try adding
+        // the listener; it simply won't work until permission is granted.
         window.addEventListener('devicemotion', handleMotion);
       }
     };

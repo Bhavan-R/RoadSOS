@@ -70,8 +70,10 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
 
   // ── Copy coords ───────────────────────────────────────────────────────────
   const handleCopyCoords = async () => {
-    if (!hasLocation) return;
-    const text = `${location.lat.toFixed(5)}, ${location.lon.toFixed(5)}`;
+    const text = hasLocation 
+      ? `${location.lat.toFixed(5)}, ${location.lon.toFixed(5)}`
+      : "Searching for GPS coordinates...";
+    
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -87,17 +89,15 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
         id="sos-main-btn"
         className={`sos-button ${sent ? 'sos-button--sent' : ''}`}
         onClick={handleSOS}
-        disabled={!hasLocation}
         aria-label="Send SOS with your location via WhatsApp"
       >
-        {sent ? '📤 Sending...' : '🆘 SOS — Send Location'}
+        {sent ? '📤 Sending...' : (!hasLocation ? '🆘 SOS — Use Best Location' : '🆘 SOS — Send Location')}
       </button>
 
       <button
         id="copy-coords-btn"
         className="coords-button"
         onClick={handleCopyCoords}
-        disabled={!hasLocation}
         aria-label="Copy GPS coordinates to clipboard"
       >
         {copied ? '✓ Copied!' : '📍 Copy GPS'}
