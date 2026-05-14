@@ -141,11 +141,12 @@ Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within 
 │  In-memory TTL Cache  (3600s Overpass · 3600s Google · 24h geocode) │
 │                                                               │
 │  GET /search                                                  │
-│   ├─ Overpass API (OSM)  ──── 5km radius                     │
-│   ├─ Expand to 10km      ──── if < 3 results                 │
-│   ├─ Google Places       ──── fallback if still < 3          │
-│   ├─ Deduplicate         ──── by phone + name                │
-│   └─ Nominatim geocode   ──── landmark + country ISO         │
+│   ├─ Overpass (OSM) + Google Places ── fired in PARALLEL     │
+│   │   ├─ Overpass: 5km, auto-expand to 10km                   │
+│   │   └─ Google: only if OSM yields < 3 phoned contacts       │
+│   ├─ Nominatim geocode  ──── runs in parallel · landmark+ISO │
+│   ├─ Merge + deduplicate ─── by phone digits, then name      │
+│   └─ Phone enrichment   ──── top-6 phoneless via Place Details │
 │                                                               │
 │  POST /triage                                                 │
 │   ├─ Anthropic Claude Haiku 4.5  ─── situation-aware sort    │
@@ -171,8 +172,10 @@ Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within 
 
 2. Location detected
    └─► GET /search?lat=X&lon=Y
-       └─► Backend queries OSM + falls back to Google Places
-       └─► Returns: contacts[], landmark, country_code
+       └─► Backend fires OSM Overpass + reverse geocode IN PARALLEL
+       └─► If OSM yields < 3 phoned contacts, also fires Google Places
+       └─► Merges, dedupes by phone digits, sorts by distance
+       └─► Returns: contacts[], landmark, country_code, source
 
 3. App caches results to localStorage (24hr TTL)
    App renders CountryEmergency banner (country-specific numbers)
@@ -542,9 +545,9 @@ The hackathon scores submissions on five criteria. Here is how RoadSOS addresses
 
 | Criterion | How RoadSOS Scores |
 |---|---|
-| **Reliability & data accuracy** | Dual-source (OSM + Google Places) with provenance badge on every card. `tel:` links use raw phone numbers from verified data. |
-| **Number of contacts fetched** | Six categories queried in parallel. Auto-expand from 5km → 10km radius. Google Places fallback when OSM returns <3 results. Typical urban query: 10–15 contacts. |
-| **Offline functionality** | Service Worker NetworkFirst cache + localStorage app cache + bundled 59-country emergency number database. National numbers work with SIM removed. |
+| **Reliability & data accuracy** | Dual-source (OSM + Google Places fired in **parallel**) with provenance badge on every card. `tel:` links use raw E.164-normalised phone numbers. 4-layer fallback: Overpass mirrors → Google Places → bundled MOCK_DATA → national numbers always visible. |
+| **Number of contacts fetched** | Eight OSM categories + four Google categories queried in parallel. Auto-expand from 5km → 10km radius. Top-6 phoneless contacts get a Google Place Details lookup for missing phones. Typical urban query: 10–15 contacts. |
+| **Offline functionality** | Three-layer offline cache: Workbox Service Worker (same-origin dev) + localStorage app cache (24h TTL, 1km grid) + **bundled 196-country emergency number database**. Triage works offline too — client-side rule-based fallback mirrors backend logic exactly. National numbers work with SIM removed. |
 | **Innovation & features** | AI triage with **visible** reasoning, GPS velocity crash detection with PIN-cancel safety layer, WhatsApp deep link broadcast, demo location picker. |
 | **International integration** | 196 countries pre-loaded. ISO country code from reverse geocoding switches numbers automatically. Demo picker proves it works in London, Tokyo, Berlin, etc. |
 

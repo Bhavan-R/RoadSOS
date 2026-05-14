@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { speakText, buildDispatchText, cancelSpeech } from '../utils/speechUtils';
 import { startAlarm, stopAlarm } from '../utils/alarmUtils';
 import { safeAutoDial, guardedTelDial, DEMO_MODE } from '../utils/demoMode';
@@ -23,6 +23,16 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
   const intervalRef             = useRef(null);
 
   const callNumber = numbers?.ambulance || numbers?.general || '112';
+
+  // Dispatch script — derived once per (location, landmark) change.
+  // Used in AUTOMATING (TTS playback + on-screen) and CALLING phases.
+  const dispatchText = useMemo(() => buildDispatchText({
+    landmark,
+    lat     : location?.lat,
+    lon     : location?.lon,
+    injured : true,
+    blocking: true,
+  }), [landmark, location?.lat, location?.lon]);
 
   // ─── Open / close lifecycle ────────────────────────────────────────────
   useEffect(() => {
@@ -68,17 +78,10 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
 
     // Read the dispatch message aloud NOW — user hears exactly what to say
     // before the call connects, so they can repeat it to the dispatcher.
-    const text = buildDispatchText({
-      landmark,
-      lat     : location?.lat,
-      lon     : location?.lon,
-      injured : true,
-      blocking: true,
-    });
     setSpeaking(true);
-    speakText(text).finally(() => setSpeaking(false));
+    speakText(dispatchText).finally(() => setSpeaking(false));
 
-    startCountdown(AUTO_SECONDS, () => fireCall(text));
+    startCountdown(AUTO_SECONDS, () => fireCall(dispatchText));
   }
 
   function fireCall(dispatchText) {
@@ -201,13 +204,6 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
 
   // ─── AUTOMATING phase ──────────────────────────────────────────────────
   if (phase === PHASE.AUTOMATING) {
-    const dispatchText = buildDispatchText({
-      landmark,
-      lat     : location?.lat,
-      lon     : location?.lon,
-      injured : true,
-      blocking: true,
-    });
     return (
       <div className="modal-backdrop modal-backdrop--alert" role="alertdialog" aria-modal="true">
         <div className="modal modal--alert crash-alert">
@@ -241,13 +237,6 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
 
   // ─── CALLING phase ────────────────────────────────────────────────────
   if (phase === PHASE.CALLING) {
-    const dispatchText = buildDispatchText({
-      landmark,
-      lat     : location?.lat,
-      lon     : location?.lon,
-      injured : true,
-      blocking: true,
-    });
     return (
       <div className="modal-backdrop modal-backdrop--alert" role="alertdialog" aria-modal="true">
         <div className="modal modal--alert crash-alert">
