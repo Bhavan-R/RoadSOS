@@ -104,18 +104,10 @@ export function useLocation({ onCrashDetected } = {}) {
     // the exported requestMotionPermission helper). We attempt a silent
     // add here which works on Android; iOS will throw and we catch it.
     const setup = () => {
-      // iOS 13+ requires explicit permission via a user gesture.
-      // We don't call .requestPermission() here because this is an effect (not a gesture).
-      // If permission was already granted in a previous session or by a gesture handler
-      // elsewhere, adding the listener will work. If not, it just won't fire.
-      if (typeof DeviceMotionEvent.requestPermission !== 'function') {
-        window.addEventListener('devicemotion', handleMotion);
-      } else {
-        // iOS 13+: only add if already granted (silent check)
-        // Note: we can't 'check' without 'requesting', but we can try adding
-        // the listener; it simply won't work until permission is granted.
-        window.addEventListener('devicemotion', handleMotion);
-      }
+      // We add the listener immediately. On non-iOS devices, it starts working now.
+      // On iOS 13+, it will start firing events as soon as the user grants permission
+      // via the user-triggered requestMotionPermission() handler in SOSButton.
+      window.addEventListener('devicemotion', handleMotion);
     };
 
     setup();
@@ -156,7 +148,7 @@ export function useLocation({ onCrashDetected } = {}) {
         setLocation({ lat: latitude, lon: longitude, speedKmh, source: 'gps' });
         setLoading(false);
         setError(null);
-        if (onCrashDetected && speed != null) {
+        if (onCrashDetected && speed !== null) {
           checkVelocityCollapse(speedKmh, pos.timestamp);
         }
       },
