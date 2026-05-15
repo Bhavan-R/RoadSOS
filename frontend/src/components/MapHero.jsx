@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hospital, Shield, Ambulance, Truck, Car, PhoneCall, Siren, Wifi, WifiOff } from 'lucide-react';
+import { Hospital, Shield, Ambulance, Truck, Car, PhoneCall, Siren, WifiOff, Map, AlertTriangle } from 'lucide-react';
 import { MapBackground, UserDot, ServiceMarker } from './MapBackground';
 import SOSButton from './SOSButton';
 
@@ -79,6 +79,12 @@ export default function MapHero({
   isOnline,
   gpsLost,
   onFirstTap,
+  // Action buttons
+  onPlanTrip,
+  onMedicalId,
+  medicalIdConfigured,
+  onTestCrash,
+  demoMode,
 }) {
   // Pick up to 4 nearest contacts for markers on map
   const markerContacts = (contacts || []).slice(0, 4);
@@ -121,18 +127,52 @@ export default function MapHero({
             {gpsLost && ' · cached'}
           </div>
         </div>
-        <div className={`mh-status-pill ${isOnline && !gpsLost ? 'mh-status-online' : 'mh-status-offline'}`}>
-          {isOnline && !gpsLost ? (
-            <>
-              <span className="mh-status-dot" />
-              ONLINE
-            </>
-          ) : (
-            <>
-              <WifiOff size={11} strokeWidth={2.4} />
-              OFFLINE
-            </>
+
+        {/* Action strip — Medical ID, Plan Trip, status pill */}
+        <div className="mh-actions">
+          {onPlanTrip && (
+            <button
+              className="mh-action-btn"
+              onClick={onPlanTrip}
+              title="Pre-cache route for offline use"
+              aria-label="Plan trip"
+            >
+              <Map size={14} strokeWidth={2} />
+            </button>
           )}
+          {onMedicalId && (
+            <button
+              className={`mh-action-btn mh-action-btn--id ${!medicalIdConfigured ? 'mh-action-btn--unset' : ''}`}
+              onClick={onMedicalId}
+              title={medicalIdConfigured ? 'View / edit Medical ID' : 'Set up Medical ID — required for direct SOS'}
+              aria-label="Medical ID"
+            >
+              🆔{!medicalIdConfigured && <span className="mh-action-dot" />}
+            </button>
+          )}
+          {demoMode && onTestCrash && (
+            <button
+              className="mh-action-btn mh-action-btn--crash"
+              onClick={onTestCrash}
+              title="Test crash alert"
+              aria-label="Test crash"
+            >
+              <AlertTriangle size={13} strokeWidth={2.5} />
+            </button>
+          )}
+          <div className={`mh-status-pill ${isOnline && !gpsLost ? 'mh-status-online' : 'mh-status-offline'}`}>
+            {isOnline && !gpsLost ? (
+              <>
+                <span className="mh-status-dot" />
+                ONLINE
+              </>
+            ) : (
+              <>
+                <WifiOff size={11} strokeWidth={2.4} />
+                OFFLINE
+              </>
+            )}
+          </div>
         </div>
       </div>
 

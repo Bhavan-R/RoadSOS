@@ -269,6 +269,11 @@ export default function App() {
         isOnline={isOnline}
         gpsLost={gpsLost}
         onFirstTap={handleMotionPermissionOnce}
+        onPlanTrip={() => setRoutePlannerOpen(true)}
+        onMedicalId={() => setMedicalOpen(true)}
+        medicalIdConfigured={medicalIdConfigured}
+        onTestCrash={() => setCrashOpen(true)}
+        demoMode={DEMO_MODE}
       />
 
       {/* ── (Legacy) Sticky Telemetry Header — kept hidden by CSS .has-map-hero override ── */}
