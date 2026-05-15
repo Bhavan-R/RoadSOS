@@ -19,6 +19,8 @@ import LocationCard from './components/LocationCard';
 import OfflineBanner from './components/OfflineBanner';
 import RoutePlanner from './components/RoutePlanner';
 import MedicalIdModal from './components/MedicalIdModal';
+import MapHero from './components/MapHero';
+import DispatchScreen from './components/DispatchScreen';
 import { requestMotionPermission } from './hooks/useLocation';
 import { DEMO_MODE } from './utils/demoMode';
 import { startBackendWarmup } from './utils/backendWarmup';
@@ -114,6 +116,8 @@ export default function App() {
   const [routePlannerOpen, setRoutePlannerOpen] = useState(false);
   const [medicalOpen, setMedicalOpen] = useState(() => isFirstLaunch());
   const [medicalIdConfigured, setMedicalIdConfigured] = useState(() => hasMedicalId());
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [dispatchedAt, setDispatchedAt] = useState(null);
 
   const {
     location: gpsLocation,
@@ -126,6 +130,16 @@ export default function App() {
   // Wake up the Render backend immediately on app load
   useEffect(() => {
     startBackendWarmup();
+  }, []);
+
+  // Listen for SOS dispatch events to open the dispatch screen
+  useEffect(() => {
+    const onDispatch = () => {
+      setDispatchedAt(Date.now());
+      setDispatchOpen(true);
+    };
+    window.addEventListener('roadsos:sos-sent', onDispatch);
+    return () => window.removeEventListener('roadsos:sos-sent', onDispatch);
   }, []);
 
   const activeLocation = useMemo(() => {
@@ -239,10 +253,25 @@ export default function App() {
 
   const countryName = numbers?.country || 'India';
 
-  return (
-    <div className="app">
+  // GPS lost detection — use cached location flag when no live GPS
+  const gpsLost = !activeLocation?.lat && !!gpsError;
 
-      {/* ── Sticky Telemetry Header ── */}
+  return (
+    <div className="app has-map-hero">
+
+      {/* ── Map-anchored Hero (replaces old telemetry header + SOS section) ── */}
+      <MapHero
+        location={activeLocation}
+        landmark={searchData?.landmark}
+        countryCode={countryCode}
+        contacts={searchData?.contacts || []}
+        topContact={topContact}
+        isOnline={isOnline}
+        gpsLost={gpsLost}
+        onFirstTap={handleMotionPermissionOnce}
+      />
+
+      {/* ── (Legacy) Sticky Telemetry Header — kept hidden by CSS .has-map-hero override ── */}
       <header className="telemetry-header">
         <div className="telemetry-block">
           <div className="telemetry-glow" />
@@ -329,15 +358,6 @@ export default function App() {
       {/* ── Offline banner (self-contained, uses useNetwork internally) ── */}
       <OfflineBanner />
 
-      {/* ── Main SOS Button ── */}
-      <SOSButton
-        location={activeLocation}
-        landmark={searchData?.landmark}
-        topContact={topContact}
-        countryCode={countryCode}
-        onFirstTap={handleMotionPermissionOnce}
-      />
-
       {/* ── GPS error strip ── */}
       {gpsError && demoIdx === 0 && !activeLocation && (
         <div className="status-strip status-strip--error" style={{ marginTop: 20 }}>
@@ -353,7 +373,7 @@ export default function App() {
       <CountryEmergency numbers={numbers} />
 
       {/* ── Nearby Services ── */}
-      <div className="sec-head" style={{ paddingTop: 22 }}>
+      <div id="nearby-services" className="sec-head" style={{ paddingTop: 22 }}>
         <span className="sec-title">Nearby Services</span>
         <span className="sec-note">
           {searchLoading ? 'Searching...' : `${searchData?.count ?? searchData?.contacts?.length ?? 0} found`}
@@ -437,6 +457,17 @@ export default function App() {
           setMedicalOpen(false);
           setMedicalIdConfigured(hasMedicalId());
         }}
+      />
+
+      {/* ── Full-screen Dispatch Glass overlay (after SOS sent) ── */}
+      <DispatchScreen
+        open={dispatchOpen}
+        onClose={() => setDispatchOpen(false)}
+        location={activeLocation}
+        landmark={searchData?.landmark}
+        contacts={searchData?.contacts || []}
+        topContact={topContact}
+        dispatchedAt={dispatchedAt}
       />
     </div>
   );

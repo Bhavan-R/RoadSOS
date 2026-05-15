@@ -88,6 +88,13 @@ export default function SOSButton({ location, landmark, countryCode, onFirstTap 
     setSent(true);
     setDispatched(true);
     setTimeout(() => setSent(false), 2500);
+
+    // Notify the app that SOS was sent (opens DispatchScreen)
+    try {
+      window.dispatchEvent(new CustomEvent('roadsos:sos-sent', {
+        detail: { location, landmark, countryCode, contacts },
+      }));
+    } catch {}
   };
 
   // ── Copy coords ───────────────────────────────────────────────────────────

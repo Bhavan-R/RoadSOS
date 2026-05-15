@@ -10,6 +10,12 @@ const CHOOSE_SECONDS = 10;
 const AUTO_SECONDS   = 4;
 const CORRECT_PIN    = '0000';
 
+// Helper: derive a friendly emergency name for the crash overlay
+function topContactName(numbers) {
+  if (!numbers) return 'Apollo';
+  return numbers.ambulance ? 'Ambulance' : numbers.general ? 'Emergency' : 'Apollo';
+}
+
 const PHASE = {
   CHOOSING   : 'choosing',
   AUTOMATING : 'automating',
@@ -189,113 +195,50 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
   })() : null;
 
   // ─── CHOOSING phase ────────────────────────────────────────────────────
+  // Final design: full-red gradient, big monospace countdown, raised "I'M OK — CANCEL" button
   if (phase === PHASE.CHOOSING) {
-    const pct = Math.max(0, (seconds / CHOOSE_SECONDS) * 100);
-    const isPinRight = pin === CORRECT_PIN;
+    const countText = String(seconds).padStart(2, '0');
+    const speedKmh = location?.speed && location.speed > 0 ? Math.round(location.speed * 3.6) : 78;
+    const alertedCount = numbers ? 1 : 0;
 
     return (
-      <div className="modal-backdrop modal-backdrop--alert" role="alertdialog" aria-modal="true">
-        <div style={{ width: '100%', maxWidth: 430, margin: '0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', paddingBottom: 32 }}>
-          <div className="do-not-panic">DO NOT PANIC</div>
-          <div className="sheet">
-            <div className="handle-bar"><div className="handle" /></div>
+      <div className="crash-final-overlay" role="alertdialog" aria-modal="true">
+        {/* Status pill */}
+        <span className="cf-pill">
+          <span className="cf-pill-dot" />
+          CRASH DETECTED
+        </span>
 
-            {/* Alert banner */}
-            <div className="alert-banner">
-              <div className="alert-icon-box">
-                <AlertTriangle size={22} color="#fff" strokeWidth={2.2} />
-              </div>
-              <div className="alert-body">
-                <div className="alert-title">Accident Detected</div>
-                <div className="alert-sub">Sudden deceleration detected — Call {callNumber}</div>
-              </div>
-            </div>
+        {/* Content (centered, upper area) */}
+        <div className="cf-content">
+          <div className="cf-do-not-panic">DO NOT PANIC</div>
+          <div className="cf-count">{countText}</div>
+          <div className="cf-count-label">seconds until auto-SOS</div>
 
-            {/* Alarm strip */}
-            <div className="alarm-strip">
-              <div className="vol-dot" />
-              <Volume2 size={14} strokeWidth={2} />
-              Alarm sounding — bystanders are being alerted
-            </div>
-
-            {/* Body */}
-            <div className="body-text">
-              How would you like to respond to this alert?
-            </div>
-
-            {/* Countdown */}
-            <div className="countdown-wrap">
-              <div className="countdown-label">
-                <span className="countdown-text">Auto-mode activates if no action taken</span>
-                <span className="countdown-num">{seconds}s</span>
-              </div>
-              <div className="countdown-track">
-                <div className="countdown-fill" style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-
-            {/* Response options */}
-            <div className="sec-label">Choose response</div>
-            <div className="response-grid">
-              <button
-                className="response-card idle"
-                onClick={triggerAutomatic}
-              >
-                <div className="rc-icon rc-icon-auto">
-                  <Bot size={18} color="#1D4ED8" strokeWidth={2} />
-                </div>
-                <div className="rc-title">Automatic</div>
-                <div className="rc-sub">App calls and relays your location to dispatcher</div>
-              </button>
-              <button
-                className="response-card idle"
-                onClick={handleChooseManual}
-              >
-                <div className="rc-icon rc-icon-manual">
-                  <PhoneCall size={18} color="#16A34A" strokeWidth={2} />
-                </div>
-                <div className="rc-title">Manual</div>
-                <div className="rc-sub">I will speak to the dispatcher myself</div>
-              </button>
-            </div>
-
-            <div className="divider" />
-
-            {/* False alarm PIN */}
-            <div className="false-alarm">
-              <div className="fa-label">
-                <ShieldOff size={13} strokeWidth={2} />
-                IF THIS IS A FALSE ALARM ENTER PIN 0000 TO STOP ALARM
-              </div>
-              <div className="pin-row">
-                <input
-                  className={`pin-input ${pinError ? "wrong" : isPinRight ? "right" : ""}`}
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder="0000"
-                  value={pin}
-                  onChange={e => {
-                    setPin(e.target.value.replace(/\D/g, ""));
-                    if (pinError) setPinError(false);
-                  }}
-                  onKeyDown={e => e.key === "Enter" && pin.length === 4 && handleCancelFalseAlarm()}
-                />
-                <button
-                  className={`stop-btn ${isPinRight ? 'success-glow' : ''}`}
-                  onClick={handleCancelFalseAlarm}
-                  disabled={pin.length !== 4}
-                >
-                  {isPinRight
-                    ? <><Check size={14} strokeWidth={2.5} color="#16A34A" /> Stopped</>
-                    : "Stop alarm"
-                  }
-                </button>
-              </div>
-            </div>
-
+          <div className="cf-details">
+            Sudden deceleration at {speedKmh} km/h.<br />
+            <strong style={{ fontWeight: 800 }}>
+              {callNumber} · {topContactName(numbers)} · {alertedCount > 0 ? 'emergency contacts' : 'no contacts set'}
+            </strong>{' '}will be alerted.
           </div>
         </div>
+
+        {/* Raised "I'M OK — CANCEL" button */}
+        <button className="cf-cancel-btn" onClick={handleCancelAuto}>
+          I'M OK — CANCEL
+        </button>
+
+        {/* Spacer pushes Send SOS Now toward bottom */}
+        <div className="cf-spacer" />
+
+        <button className="cf-send-now" onClick={() => {
+          clearInterval(intervalRef.current);
+          stopAlarm();
+          dispatchSos();
+          fireCall();
+        }}>
+          Send SOS now
+        </button>
       </div>
     );
   }
