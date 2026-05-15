@@ -5,13 +5,14 @@ import { encodePlusCode } from '../utils/plusCodes';
 /**
  * SOSButton — sticky bottom bar.
  *
- * SOS tap behaviour:
- *   • 1 contact set  → WhatsApp direct, SMS fallback (same as before)
- *   • 2–3 contacts   → WhatsApp to contact 1  AND  group SMS to all contacts
- *   • No contacts    → WhatsApp share sheet (no recipient) + nudge
+ * SOS tap behaviour (one reliable action per tap — mobile browsers block
+ * parallel window.open + location.href calls after the first):
  *
- * Stale-data fix: contacts are read fresh on every render (cheap localStorage
- * call), so the nudge disappears immediately after the user saves Medical ID.
+ *   • 0 contacts  → WhatsApp share sheet (pick anyone manually)
+ *   • 1 contact   → WhatsApp direct → SMS fallback if WA not installed
+ *   • 2–3 contacts → group SMS to ALL contacts (window.location.href, always
+ *                    reaches everyone). A secondary "WhatsApp → contact 1"
+ *                    link appears right below so WA users get both channels.
  *
  * Props:
  *   location   { lat, lon, source }
@@ -29,8 +30,7 @@ function waDirectUrl(phone, body) {
   return `https://wa.me/${num}?text=${encodeURIComponent(body)}`;
 }
 
-/** SMS URI supporting up to 3 recipients. iOS uses commas, Android semicolons;
- *  modern Android also accepts commas — comma is the safer default. */
+/** Group SMS URI. Comma-separated recipients work on modern Android & iOS. */
 function buildGroupSmsHref(phones, body) {
   const nums = phones.map(cleanPhone).filter(Boolean).join(',');
   return `sms:${nums}?body=${encodeURIComponent(body)}`;
@@ -43,34 +43,31 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
 
   const hasLocation = !!(location?.lat && location?.lon);
 
-  // ── Read contacts fresh every render — localStorage is synchronous and fast.
-  // This is intentional: it means the nudge / button label update instantly
-  // when the user saves Medical ID without needing a prop change.
-  const contacts = getEmergencyContacts();     // [{name, phone}]  length 0–3
+  // Read contacts fresh every render — cheap sync localStorage call.
+  // Ensures the nudge and label update the moment Medical ID is saved.
+  const contacts    = getEmergencyContacts();   // [{name, phone}]  0–3 items
   const hasContacts = contacts.length > 0;
+  const multiContact = contacts.length > 1;
 
-  // ── Build URLs only when location or contact list changes ─────────────────
+  // Build URLs only when location or contacts change.
   const phonesKey = contacts.map(c => c.phone).join(',');
-  const { waUrl, groupSmsHref, multiContact } = useMemo(() => {
-    if (!hasLocation) return { waUrl: '', groupSmsHref: '', multiContact: false };
+  const { waUrl, groupSmsHref } = useMemo(() => {
+    if (!hasLocation) return { waUrl: '', groupSmsHref: '' };
 
     const plusCode = encodePlusCode(location.lat, location.lon);
     const body = buildSosSmsBody({ lat: location.lat, lon: location.lon, plusCode, landmark });
 
     if (contacts.length === 0) {
-      // No contacts — share sheet fallback
       const encoded = encodeURIComponent(body);
       return {
-        waUrl        : `https://wa.me/?text=${encoded}`,
-        groupSmsHref : `sms:?body=${encoded}`,
-        multiContact : false,
+        waUrl       : `https://wa.me/?text=${encoded}`,
+        groupSmsHref: `sms:?body=${encoded}`,
       };
     }
 
     return {
-      waUrl        : waDirectUrl(contacts[0].phone, body),
-      groupSmsHref : buildGroupSmsHref(contacts.map(c => c.phone), body),
-      multiContact : contacts.length > 1,
+      waUrl       : waDirectUrl(contacts[0].phone, body),
+      groupSmsHref: buildGroupSmsHref(contacts.map(c => c.phone), body),
     };
   }, [hasLocation, location?.lat, location?.lon, landmark, phonesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -80,12 +77,13 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
     if (!hasLocation) return;
 
     if (multiContact) {
-      // Multiple contacts: open WhatsApp for contact 1, then immediately
-      // open a group SMS so all contacts receive the message.
-      window.open(waUrl, '_blank');
-      setTimeout(() => { window.location.href = groupSmsHref; }, 600);
+      // Multiple contacts: group SMS is the ONLY reliable single-tap action.
+      // Mobile browsers silently drop a second window.open / location.href
+      // that follows immediately — so we pick one action and do it well.
+      // A secondary "Also via WhatsApp" link is rendered below for contact 1.
+      window.location.href = groupSmsHref;
     } else if (hasContacts) {
-      // Single contact: WhatsApp → SMS fallback if WA blocked/missing.
+      // Single contact: prefer WhatsApp, fall back to SMS if WA missing.
       const win = window.open(waUrl, '_blank');
       setTimeout(() => {
         if (!win || win.closed || win.closed === undefined) {
@@ -93,7 +91,7 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
         }
       }, 800);
     } else {
-      // No contact: WhatsApp share sheet.
+      // No contact configured: WhatsApp share sheet (user picks manually).
       const win = window.open(waUrl, '_blank');
       setTimeout(() => {
         if (!win || win.closed || win.closed === undefined) {
@@ -103,7 +101,7 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
     }
 
     setSent(true);
-    setTimeout(() => setSent(false), 2000);
+    setTimeout(() => setSent(false), 2500);
   };
 
   // ── Copy coords ───────────────────────────────────────────────────────────
@@ -118,11 +116,11 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
     } catch { /* silent */ }
   };
 
-  // ── Label / title ─────────────────────────────────────────────────────────
-  const contactSummary = contacts.length === 1
-    ? contacts[0].name || contacts[0].phone
-    : contacts.length > 1
-      ? `${contacts.length} contacts`
+  // ── Labels ────────────────────────────────────────────────────────────────
+  const contactSummary = multiContact
+    ? `${contacts.length} contacts`
+    : hasContacts
+      ? (contacts[0].name || contacts[0].phone)
       : null;
 
   const btnLabel = sent
@@ -133,11 +131,11 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
         ? `🆘 SOS → ${contactSummary}`
         : '🆘 SOS — Send Location';
 
-  const btnTitle = hasContacts
-    ? multiContact
-      ? `Send SOS to all ${contacts.length} emergency contacts via WhatsApp + group SMS`
-      : `Send SOS directly to ${contactSummary} via WhatsApp`
-    : 'Send SOS via WhatsApp — add emergency contacts in Medical ID for one-tap direct messaging';
+  const btnTitle = multiContact
+    ? `Send group SMS to all ${contacts.length} emergency contacts`
+    : hasContacts
+      ? `Send SOS directly to ${contactSummary} via WhatsApp`
+      : 'Send SOS via WhatsApp — add emergency contacts in Medical ID for one-tap direct messaging';
 
   return (
     <div className="sos-bar">
@@ -166,6 +164,22 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
       >
         {copied ? '✓ Copied!' : '📍 Copy GPS'}
       </button>
+
+      {/* Secondary WhatsApp link for multi-contact mode.
+          The main SOS fires group SMS (reaches everyone); this lets the user
+          also ping contact 1 on WhatsApp with one more tap. */}
+      {multiContact && hasLocation && waUrl && (
+        <a
+          className="sos-bar__wa-link"
+          href={waUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Also send via WhatsApp to ${contacts[0].name || contacts[0].phone}`}
+        >
+          <span className="sos-bar__wa-icon">💬</span>
+          Also WhatsApp → {contacts[0].name || contacts[0].phone}
+        </a>
+      )}
     </div>
   );
 }

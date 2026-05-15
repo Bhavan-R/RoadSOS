@@ -451,6 +451,22 @@ body {
 }
 .sos-bar__nudge strong { color: var(--text); }
 
+/* Secondary WhatsApp link (multi-contact mode only) */
+.sos-bar__wa-link {
+  flex: 0 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #25D366;
+  text-decoration: none;
+  padding: 4px 0 0;
+  font-weight: 500;
+}
+.sos-bar__wa-link:hover { text-decoration: underline; }
+.sos-bar__wa-icon { font-size: 15px; }
+
 .sos-button {
   flex: 2;
   background: var(--accent);
