@@ -27,8 +27,25 @@ const EMPTY = {
   medications: '',        // free text
   primaryContactName: '',
   primaryContactPhone: '',
+  secondaryContactName: '',
+  secondaryContactPhone: '',
+  tertiaryContactName: '',
+  tertiaryContactPhone: '',
   organDonor: false,
 };
+
+/**
+ * Returns the list of configured emergency contacts (1–3) as
+ * [{ name, phone }] with empties filtered out.
+ */
+export function getEmergencyContacts() {
+  const m = getMedicalId();
+  return [
+    { name: m.primaryContactName,   phone: m.primaryContactPhone   },
+    { name: m.secondaryContactName,  phone: m.secondaryContactPhone  },
+    { name: m.tertiaryContactName,   phone: m.tertiaryContactPhone   },
+  ].filter(c => c.phone && c.phone.trim().length > 0);
+}
 
 export function getMedicalId() {
   try {

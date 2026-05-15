@@ -1076,6 +1076,29 @@ code {
   gap: 10px;
   margin: 12px 0;
 }
+/* Emergency contacts block */
+.medical-id__contact-group {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.medical-id__contact-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 2px;
+}
+.medical-id__contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .medical-id__field {
   display: flex;
   flex-direction: column;

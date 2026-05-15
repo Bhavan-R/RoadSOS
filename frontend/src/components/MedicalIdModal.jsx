@@ -141,24 +141,24 @@ function DisplayCard({ data }) {
       {has(data.medications) && (
         <Row label="Current medications" value={data.medications} />
       )}
-      {(has(data.primaryContactName) || has(data.primaryContactPhone)) && (
+      {[
+        { name: data.primaryContactName,   phone: data.primaryContactPhone,   label: 'Emergency contact 1' },
+        { name: data.secondaryContactName,  phone: data.secondaryContactPhone,  label: 'Emergency contact 2' },
+        { name: data.tertiaryContactName,   phone: data.tertiaryContactPhone,   label: 'Emergency contact 3' },
+      ].filter(c => has(c.name) || has(c.phone)).map((c) => (
         <Row
-          label="Emergency contact"
+          key={c.label}
+          label={c.label}
           value={
             <span>
-              {data.primaryContactName}
-              {has(data.primaryContactPhone) && (
-                <>
-                  {' · '}
-                  <a href={`tel:${data.primaryContactPhone}`}>
-                    {data.primaryContactPhone}
-                  </a>
-                </>
+              {c.name}
+              {has(c.phone) && (
+                <>{c.name ? ' · ' : ''}<a href={`tel:${c.phone}`}>{c.phone}</a></>
               )}
             </span>
           }
         />
-      )}
+      ))}
       {data.organDonor && (
         <Row label="Organ donor" value="Yes" highlight />
       )}
@@ -184,8 +184,21 @@ function EditForm({ data, update }) {
       <Field label="Allergies"        value={data.allergies}           onChange={(v) => update('allergies', v)} placeholder="e.g. penicillin, peanuts" />
       <Field label="Medical conditions" value={data.conditions}         onChange={(v) => update('conditions', v)} placeholder="e.g. asthma, diabetes type II" />
       <Field label="Current medications" value={data.medications}       onChange={(v) => update('medications', v)} placeholder="e.g. metformin, salbutamol" />
-      <Field label="Emergency contact name" value={data.primaryContactName} onChange={(v) => update('primaryContactName', v)} />
-      <Field label="Emergency contact phone" value={data.primaryContactPhone} onChange={(v) => update('primaryContactPhone', v)} type="tel" placeholder="+91…" />
+      <div className="medical-id__contact-group">
+        <div className="medical-id__contact-group-label">Emergency contacts (SOS messages all of them)</div>
+        <div className="medical-id__contact-row">
+          <Field label="Contact 1 name"  value={data.primaryContactName}    onChange={(v) => update('primaryContactName', v)}   placeholder="e.g. Mum" />
+          <Field label="Contact 1 phone" value={data.primaryContactPhone}   onChange={(v) => update('primaryContactPhone', v)}  type="tel" placeholder="+91…" />
+        </div>
+        <div className="medical-id__contact-row">
+          <Field label="Contact 2 name"  value={data.secondaryContactName}  onChange={(v) => update('secondaryContactName', v)} placeholder="optional" />
+          <Field label="Contact 2 phone" value={data.secondaryContactPhone} onChange={(v) => update('secondaryContactPhone', v)} type="tel" placeholder="+91…" />
+        </div>
+        <div className="medical-id__contact-row">
+          <Field label="Contact 3 name"  value={data.tertiaryContactName}   onChange={(v) => update('tertiaryContactName', v)}  placeholder="optional" />
+          <Field label="Contact 3 phone" value={data.tertiaryContactPhone}  onChange={(v) => update('tertiaryContactPhone', v)} type="tel" placeholder="+91…" />
+        </div>
+      </div>
       <label className="medical-id__checkbox">
         <input
           type="checkbox"

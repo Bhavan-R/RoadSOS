@@ -3,7 +3,7 @@ import { speakText, buildDispatchText, cancelSpeech } from '../utils/speechUtils
 import { startAlarm, stopAlarm } from '../utils/alarmUtils';
 import { safeAutoDial, guardedTelDial, DEMO_MODE } from '../utils/demoMode';
 import { encodePlusCode } from '../utils/plusCodes';
-import { getMedicalId, buildSosSmsBody, buildSosSmsHref, hasMedicalId } from '../utils/medicalId';
+import { getEmergencyContacts, buildSosSmsBody, hasMedicalId } from '../utils/medicalId';
 
 const CHOOSE_SECONDS = 10;
 const AUTO_SECONDS   = 4;
@@ -44,15 +44,14 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
     blocking: true,
   }), [landmark, location?.lat, location?.lon, plusCode]);
 
-  // SOS-by-SMS — pre-composed message + sms: link. Used when voice fails.
+  // SOS-by-SMS — group message to all configured emergency contacts.
   const smsHref = useMemo(() => {
     if (!location?.lat || !location?.lon) return '';
-    const m = getMedicalId();
-    if (!m.primaryContactPhone) return '';
-    const body = buildSosSmsBody({
-      lat: location.lat, lon: location.lon, plusCode, landmark,
-    });
-    return buildSosSmsHref(m.primaryContactPhone, body);
+    const contacts = getEmergencyContacts();
+    if (contacts.length === 0) return '';
+    const body = buildSosSmsBody({ lat: location.lat, lon: location.lon, plusCode, landmark });
+    const nums = contacts.map(c => (c.phone || '').replace(/[^\d+]/g, '')).filter(Boolean).join(',');
+    return `sms:${nums}?body=${encodeURIComponent(body)}`;
   }, [location?.lat, location?.lon, plusCode, landmark]);
 
   // ─── Open / close lifecycle ────────────────────────────────────────────
@@ -289,7 +288,7 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
               href={smsHref}
               title="If voice fails, send an SMS to your emergency contact instead"
             >
-              📱 Send SOS-by-SMS to my contact
+              📱 Send SOS-by-SMS to emergency contacts
             </a>
           )}
 
@@ -367,7 +366,7 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
             href={smsHref}
             title="If voice fails, send an SMS to your emergency contact"
           >
-            📱 Send SOS-by-SMS to my emergency contact
+            📱 Send SOS-by-SMS to emergency contacts
           </a>
         )}
 
