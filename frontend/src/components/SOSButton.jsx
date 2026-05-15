@@ -136,39 +136,41 @@ export default function SOSButton({ location, landmark, countryCode, onFirstTap 
         </div>
       )}
 
-      {/* Main SOS button */}
-      <button
-        id="sos-main-btn"
-        className={`glass-sos-btn ${sent ? 'sent' : ''}`}
-        onClick={handleSOS}
-        aria-label={hasContacts
-          ? `Send SOS via ${channelLabel} to ${contactSummary}`
-          : 'Send SOS with your location via WhatsApp'}
-        title={hasContacts
-          ? `Sends via ${channelLabel} to ${contactSummary}`
-          : 'Set emergency contacts in Medical ID for direct messaging'}
-      >
-        {!sent && (
-          <>
-            <div className="glass-sonar" />
-            <div className="glass-sonar" />
-          </>
-        )}
-        {btnLabel}
-      </button>
+      {/* SOS button row — relative wrapper for btn + copy icon */}
+      <div className="glass-sos-row">
+        <button
+          id="sos-main-btn"
+          className={`glass-sos-btn ${sent ? 'sent' : ''}`}
+          onClick={handleSOS}
+          aria-label={hasContacts
+            ? `Send SOS via ${channelLabel} to ${contactSummary}`
+            : 'Send SOS with your location via WhatsApp'}
+          title={hasContacts
+            ? `Sends via ${channelLabel} to ${contactSummary}`
+            : 'Set emergency contacts in Medical ID for direct messaging'}
+        >
+          {!sent && (
+            <>
+              <div className="glass-sonar" />
+              <div className="glass-sonar" />
+            </>
+          )}
+          {btnLabel}
+        </button>
 
-      <button
-        id="copy-coords-btn"
-        className="glass-copy-btn"
-        onClick={handleCopyCoords}
-        aria-label="Copy GPS coordinates to clipboard"
-        title="Copy GPS coordinates"
-      >
-        {copied
-          ? <Check size={18} strokeWidth={2.5} color="#22C55E" />
-          : <Copy size={18} strokeWidth={1.8} />
-        }
-      </button>
+        <button
+          id="copy-coords-btn"
+          className="glass-copy-btn"
+          onClick={handleCopyCoords}
+          aria-label="Copy GPS coordinates to clipboard"
+          title="Copy GPS coordinates"
+        >
+          {copied
+            ? <Check size={18} strokeWidth={2.5} color="#22C55E" />
+            : <Copy size={18} strokeWidth={1.8} />
+          }
+        </button>
+      </div>
 
       {/* Follow-up dispatch panel */}
       {dispatched && hasContacts && hasLocation && (
