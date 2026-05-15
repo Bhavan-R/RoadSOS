@@ -190,7 +190,12 @@ export default function App() {
             );
           } else {
             console.warn('[RoadSOS] Backend + cache + bundle all empty — using mock data:', err.message);
-            setSearchData(MOCK_DATA);
+            // Don't overwrite the user's real-location landmark / country with mock ones.
+            setSearchData({
+              ...MOCK_DATA,
+              landmark: null,
+              country_code: activeLocation?.country_code || MOCK_DATA.country_code,
+            });
             setTriageOpen(true);
             setSearchError(
               isOnline
@@ -207,6 +212,8 @@ export default function App() {
 
     return () => { cancelled = true; controller.abort(); clearTimeout(hardTimeout); };
   }, [searchLat, searchLon]);
+
+  const countryCode = searchData?.country_code || activeLocation?.country_code || 'IN';
 
   const handleTriage = useCallback(async ({ injured, blocking }) => {
     if (!searchData?.contacts?.length) return;
@@ -227,7 +234,6 @@ export default function App() {
     }
   }, [searchData, activeLocation, countryCode]);
 
-  const countryCode = searchData?.country_code || activeLocation?.country_code || 'IN';
   const numbers = getEmergencyNumbers(countryCode);
   const topContact = searchData?.contacts?.[0];
 

@@ -24,8 +24,8 @@ export default function ContactList({ contacts, loading, error, cachedAt, cat, s
     );
   }
 
-  // ── Error state ───────────────────────────────────────────────────────────
-  if (error) {
+  // ── Error state — only block if no fallback contacts available ───────────
+  if (error && (!contacts || contacts.length === 0)) {
     return (
       <div className="loading-box" role="alert">
         <div style={{ fontSize: 24, marginBottom: 8 }}>⚠️</div>
@@ -50,6 +50,12 @@ export default function ContactList({ contacts, loading, error, cachedAt, cat, s
           </button>
         ))}
       </div>
+
+      {error && (
+        <div className="cached-note" role="alert" style={{ background: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}>
+          ⚠️ {error}
+        </div>
+      )}
 
       {cachedAt && (
         <div className="cached-note">
