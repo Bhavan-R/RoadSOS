@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { speakText, buildDispatchText, cancelSpeech } from '../utils/speechUtils';
 import { startAlarm, stopAlarm } from '../utils/alarmUtils';
 import { safeAutoDial, guardedTelDial, DEMO_MODE } from '../utils/demoMode';
+import { encodePlusCode } from '../utils/plusCodes';
+import { getMedicalId, buildSosSmsBody, buildSosSmsHref, hasMedicalId } from '../utils/medicalId';
 
 const CHOOSE_SECONDS = 10;
 const AUTO_SECONDS   = 4;
@@ -24,15 +26,34 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
 
   const callNumber = numbers?.ambulance || numbers?.general || '112';
 
+  // Plus Code — encoded offline, dispatcher-readable location string.
+  const plusCode = useMemo(() => {
+    if (!location?.lat || !location?.lon) return '';
+    return encodePlusCode(location.lat, location.lon);
+  }, [location?.lat, location?.lon]);
+
   // Dispatch script — derived once per (location, landmark) change.
   // Used in AUTOMATING (TTS playback + on-screen) and CALLING phases.
+  // Now includes the Plus Code for easier voice communication.
   const dispatchText = useMemo(() => buildDispatchText({
     landmark,
     lat     : location?.lat,
     lon     : location?.lon,
+    plusCode,
     injured : true,
     blocking: true,
-  }), [landmark, location?.lat, location?.lon]);
+  }), [landmark, location?.lat, location?.lon, plusCode]);
+
+  // SOS-by-SMS — pre-composed message + sms: link. Used when voice fails.
+  const smsHref = useMemo(() => {
+    if (!location?.lat || !location?.lon) return '';
+    const m = getMedicalId();
+    if (!m.primaryContactPhone) return '';
+    const body = buildSosSmsBody({
+      lat: location.lat, lon: location.lon, plusCode, landmark,
+    });
+    return buildSosSmsHref(m.primaryContactPhone, body);
+  }, [location?.lat, location?.lon, plusCode, landmark]);
 
   // ─── Open / close lifecycle ────────────────────────────────────────────
   useEffect(() => {
@@ -251,9 +272,26 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
             </p>
           </div>
 
+          {plusCode && (
+            <div className="crash-alert__pluscode" title="Open Location Code — Indian 112 dispatchers recognize this">
+              <span className="crash-alert__pluscode-label">📍 Plus Code</span>
+              <span className="crash-alert__pluscode-value">{plusCode}</span>
+            </div>
+          )}
+
           <p className="crash-alert__auto-info" style={{ marginTop: 8 }}>
             Read this out loud. The dispatcher will guide you next.
           </p>
+
+          {smsHref && (
+            <a
+              className="crash-alert__sms-btn"
+              href={smsHref}
+              title="If voice fails, send an SMS to your emergency contact instead"
+            >
+              📱 Send SOS-by-SMS to my contact
+            </a>
+          )}
 
           <button
             className="modal__secondary crash-alert__cancel-btn"
@@ -286,6 +324,12 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
             GPS: {location.lat.toFixed(5)}, {location.lon.toFixed(5)}
           </div>
         )}
+        {plusCode && (
+          <div className="crash-alert__pluscode" title="Open Location Code — works offline, dispatcher-friendly">
+            <span className="crash-alert__pluscode-label">📍 Plus Code</span>
+            <span className="crash-alert__pluscode-value">{plusCode}</span>
+          </div>
+        )}
 
         <div className="crash-alert__manual-calls">
           {numbers?.ambulance && (
@@ -316,6 +360,16 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
             </a>
           )}
         </div>
+
+        {smsHref && (
+          <a
+            className="crash-alert__sms-btn"
+            href={smsHref}
+            title="If voice fails, send an SMS to your emergency contact"
+          >
+            📱 Send SOS-by-SMS to my emergency contact
+          </a>
+        )}
 
         <button
           className="modal__secondary crash-alert__cancel-btn"
