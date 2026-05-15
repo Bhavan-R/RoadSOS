@@ -8,7 +8,8 @@
  *   downstream search fails (offline simulation).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CITY_PRESETS, prefetchRoute } from '../routeCache';
+import { prefetchRoute } from '../routeCache';
+import { QUICK_PICK_CITIES } from '../geocode';
 
 // Mock the live `/search` and OSRM calls so the test is hermetic.
 vi.mock('../overpass', () => ({
@@ -21,12 +22,11 @@ vi.mock('../offlineDB', () => ({
 import { searchNearby } from '../overpass';
 import { saveSearchResult } from '../offlineDB';
 
-describe('CITY_PRESETS', () => {
-  it('has at least 10 cities with valid coords', () => {
-    expect(CITY_PRESETS.length).toBeGreaterThanOrEqual(10);
-    for (const c of CITY_PRESETS) {
+describe('QUICK_PICK_CITIES', () => {
+  it('has at least 6 cities with valid coords', () => {
+    expect(QUICK_PICK_CITIES.length).toBeGreaterThanOrEqual(6);
+    for (const c of QUICK_PICK_CITIES) {
       expect(c.name).toBeTruthy();
-      expect(c.code).toBeTruthy();
       expect(typeof c.lat).toBe('number');
       expect(typeof c.lon).toBe('number');
       // Roughly bounded to India
@@ -36,7 +36,7 @@ describe('CITY_PRESETS', () => {
   });
 
   it('Chennai and Bengaluru are present', () => {
-    const names = CITY_PRESETS.map((c) => c.name);
+    const names = QUICK_PICK_CITIES.map((c) => c.name);
     expect(names).toContain('Chennai');
     expect(names).toContain('Bengaluru');
   });

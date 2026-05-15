@@ -1,34 +1,134 @@
-import React, { useState, useCallback } from 'react';
-import { prefetchRoute, CITY_PRESETS } from '../utils/routeCache';
+import React, { useState, useCallback, useEffect } from 'react';
+import { prefetchRoute } from '../utils/routeCache';
+import { geocodePlace, QUICK_PICK_CITIES } from '../utils/geocode';
 
 /**
  * RoutePlanner — pre-cache emergency contacts along a road trip so the
  * app keeps working in dead zones.
  *
- * UX: pick origin + destination from a curated city dropdown, hit "Cache".
- * Progress bar fills as each waypoint completes.
+ * UX (v2): free-text origin + destination — works for any city, town,
+ * highway junction, or landmark anywhere on Earth via Nominatim. Quick-
+ * pick chips below the inputs are shortcuts, not restrictions.
  *
  * Props:
  *   open      {boolean}
  *   onClose   {function}
  */
+
+// Helper input field with geocode status indicator.
+function PlaceInput({ label, value, onChange, onGeocoded, geo, disabled, id }) {
+  const [busy, setBusy] = useState(false);
+
+  const lookup = useCallback(async () => {
+    const q = (value || '').trim();
+    if (q.length < 2) { onGeocoded(null); return; }
+    if (geo && geo.query === q) return; // already resolved
+    setBusy(true);
+    const result = await geocodePlace(q);
+    setBusy(false);
+    onGeocoded(result ? { ...result, query: q } : { query: q, error: true });
+  }, [value, geo, onGeocoded]);
+
+  const statusIcon = busy
+    ? '⏳'
+    : geo?.error
+      ? '⚠️'
+      : geo && !geo.error
+        ? '✓'
+        : '';
+
+  return (
+    <label className="route-planner__field">
+      <span className="route-planner__field-label">{label}</span>
+      <div className="route-planner__input-wrap">
+        <input
+          id={id}
+          type="text"
+          value={value}
+          onChange={(e) => { onChange(e.target.value); onGeocoded(null); }}
+          onBlur={lookup}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); lookup(); } }}
+          placeholder="City, town, or landmark"
+          disabled={disabled}
+          autoComplete="off"
+          spellCheck="false"
+        />
+        <span className={`route-planner__input-status ${geo?.error ? 'route-planner__input-status--err' : ''}`}>
+          {statusIcon}
+        </span>
+      </div>
+      {geo?.error && (
+        <span className="route-planner__field-hint route-planner__field-hint--err">
+          Couldn't find that place. Check spelling or try a nearby town.
+        </span>
+      )}
+      {geo && !geo.error && (
+        <span className="route-planner__field-hint">
+          {geo.displayName.length > 60 ? geo.displayName.slice(0, 57) + '…' : geo.displayName}
+        </span>
+      )}
+    </label>
+  );
+}
+
 export default function RoutePlanner({ open, onClose }) {
-  const [originIdx,      setOriginIdx]      = useState(0);
-  const [destinationIdx, setDestinationIdx] = useState(1);
+  // Text + resolved geo state for each input
+  const [originText, setOriginText] = useState('');
+  const [originGeo,  setOriginGeo]  = useState(null);
+  const [destText,   setDestText]   = useState('');
+  const [destGeo,    setDestGeo]    = useState(null);
+
   const [progress,       setProgress]       = useState(null); // { done, total }
   const [status,         setStatus]         = useState('idle'); // idle | running | done | error
   const [polylineSource, setPolylineSource] = useState(null);
 
-  const origin      = CITY_PRESETS[originIdx];
-  const destination = CITY_PRESETS[destinationIdx];
-  const sameCity    = originIdx === destinationIdx;
+  // Reset when the modal opens
+  useEffect(() => {
+    if (open) {
+      setOriginText(''); setOriginGeo(null);
+      setDestText('');   setDestGeo(null);
+      setProgress(null); setStatus('idle'); setPolylineSource(null);
+    }
+  }, [open]);
+
+  const fillFromChip = (slot, city) => {
+    const geo = {
+      lat: city.lat, lon: city.lon,
+      displayName: city.name, query: city.name,
+    };
+    if (slot === 'origin') {
+      setOriginText(city.name); setOriginGeo(geo);
+    } else {
+      setDestText(city.name); setDestGeo(geo);
+    }
+  };
+
+  const useCurrentForOrigin = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setOriginText('Current location');
+        setOriginGeo({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          displayName: `Current location (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`,
+          query: 'current',
+        });
+      },
+      () => { /* permission denied — silent */ },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 }
+    );
+  };
+
+  const ready = originGeo && !originGeo.error && destGeo && !destGeo.error &&
+                !(originGeo.lat === destGeo.lat && originGeo.lon === destGeo.lon);
 
   const handleStart = useCallback(async () => {
-    if (sameCity) return;
+    if (!ready) return;
     setStatus('running');
     setProgress({ done: 0, total: 6 });
     try {
-      const result = await prefetchRoute(origin, destination, {
+      const result = await prefetchRoute(originGeo, destGeo, {
         waypoints: 6,
         onProgress: (p) => setProgress({ done: p.done, total: p.total }),
       });
@@ -37,13 +137,10 @@ export default function RoutePlanner({ open, onClose }) {
     } catch {
       setStatus('error');
     }
-  }, [origin, destination, sameCity]);
+  }, [ready, originGeo, destGeo]);
 
   const handleClose = useCallback(() => {
-    if (status === 'running') return; // don't allow close mid-fetch
-    setStatus('idle');
-    setProgress(null);
-    setPolylineSource(null);
+    if (status === 'running') return;
     onClose?.();
   }, [status, onClose]);
 
@@ -61,7 +158,6 @@ export default function RoutePlanner({ open, onClose }) {
     >
       <div className="modal route-planner">
 
-        {/* Header */}
         <div className="modal__header-row">
           <span className="modal__header-icon">🗺</span>
           <div>
@@ -73,43 +169,57 @@ export default function RoutePlanner({ open, onClose }) {
           </div>
         </div>
 
-        {/* From / To */}
+        {/* From / To free-text inputs */}
         <div className="route-planner__form">
-          <label className="route-planner__field">
-            <span className="route-planner__field-label">From</span>
-            <select
-              value={originIdx}
-              onChange={(e) => setOriginIdx(Number(e.target.value))}
-              disabled={status === 'running'}
-              id="route-origin"
-            >
-              {CITY_PRESETS.map((c, i) => (
-                <option key={c.code} value={i}>{c.name}</option>
-              ))}
-            </select>
-          </label>
-
+          <PlaceInput
+            id="route-origin"
+            label="From"
+            value={originText}
+            onChange={setOriginText}
+            onGeocoded={setOriginGeo}
+            geo={originGeo}
+            disabled={status === 'running'}
+          />
           <div className="route-planner__arrow" aria-hidden="true">→</div>
-
-          <label className="route-planner__field">
-            <span className="route-planner__field-label">To</span>
-            <select
-              value={destinationIdx}
-              onChange={(e) => setDestinationIdx(Number(e.target.value))}
-              disabled={status === 'running'}
-              id="route-destination"
-            >
-              {CITY_PRESETS.map((c, i) => (
-                <option key={c.code} value={i}>{c.name}</option>
-              ))}
-            </select>
-          </label>
+          <PlaceInput
+            id="route-destination"
+            label="To"
+            value={destText}
+            onChange={setDestText}
+            onGeocoded={setDestGeo}
+            geo={destGeo}
+            disabled={status === 'running'}
+          />
         </div>
 
-        {sameCity && status === 'idle' && (
-          <p className="route-planner__hint route-planner__hint--warn">
-            Pick a different destination than origin.
-          </p>
+        {/* "Use current location" + quick-pick chips */}
+        {status === 'idle' && (
+          <>
+            <div className="route-planner__quick-row">
+              <button
+                type="button"
+                className="route-planner__locate-btn"
+                onClick={useCurrentForOrigin}
+                disabled={!navigator.geolocation}
+                title="Set origin to your current GPS coordinates"
+              >
+                📍 Use current location as origin
+              </button>
+            </div>
+            <div className="route-planner__chips">
+              <span className="route-planner__chips-label">Quick fill destination:</span>
+              {QUICK_PICK_CITIES.map((c) => (
+                <button
+                  key={c.name}
+                  type="button"
+                  className="route-planner__chip"
+                  onClick={() => fillFromChip('destination', c)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {/* Progress / status */}
@@ -130,7 +240,7 @@ export default function RoutePlanner({ open, onClose }) {
         {status === 'done' && (
           <div className="route-planner__result route-planner__result--ok">
             ✓ Cached {progress?.total || 0} highway segments for
-            <strong> {origin.name} → {destination.name}</strong>.
+            <strong> {originText} → {destText}</strong>.
             <div className="route-planner__result-sub">
               {polylineSource === 'osrm'
                 ? 'Real driving route from OSRM.'
@@ -142,7 +252,7 @@ export default function RoutePlanner({ open, onClose }) {
 
         {status === 'error' && (
           <div className="route-planner__result route-planner__result--err">
-            Could not cache any waypoints — check connection and try again.
+            Could not cache any waypoints. Check connection and try again.
           </div>
         )}
 
@@ -152,8 +262,11 @@ export default function RoutePlanner({ open, onClose }) {
             <button
               className="modal__primary"
               onClick={handleStart}
-              disabled={sameCity}
+              disabled={!ready}
               id="route-start-btn"
+              title={!ready
+                ? 'Type or pick origin + destination first'
+                : 'Pre-fetch /search for waypoints along this route'}
             >
               🛣 Cache route for offline use
             </button>
@@ -164,7 +277,7 @@ export default function RoutePlanner({ open, onClose }) {
             </button>
           )}
           {(status === 'done' || status === 'error') && (
-            <button className="modal__primary" onClick={handleStart}>
+            <button className="modal__primary" onClick={() => setStatus('idle')}>
               ↻ Cache another route
             </button>
           )}

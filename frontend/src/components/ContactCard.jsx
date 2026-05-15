@@ -22,11 +22,19 @@ const CATEGORY_ICONS = {
 };
 
 export default function ContactCard({ contact, isTop }) {
-  const { name, category, distance, phone, source, isOpen, aiReason } = contact;
+  const { name, category, distance, phone, source, isOpen, aiReason, lat, lon } = contact;
 
   // Normalise phone: strip spaces for the href, keep formatted for display
   const phoneClean = phone ? phone.replace(/\s+/g, '') : null;
   const callHref   = phoneClean ? `tel:${phoneClean}` : null;
+
+  // Google Maps directions URL — uses the "dir" endpoint so Maps prompts
+  // the user's current location as the origin and the contact as the
+  // destination. The query name is included so the pin shows the place
+  // name even when the lat/lon resolves to a slightly different polygon.
+  const mapsHref = (typeof lat === 'number' && typeof lon === 'number')
+    ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&destination_place_id=${encodeURIComponent(name || '')}`
+    : null;
 
   const cat = (category || 'repair').toLowerCase();
 
@@ -82,6 +90,19 @@ export default function ContactCard({ contact, isTop }) {
         <div className="call-button call-button--disabled">
           No phone number listed
         </div>
+      )}
+
+      {/* Open in Google Maps — directions from current location */}
+      {mapsHref && (
+        <a
+          href={mapsHref}
+          className="maps-link"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open directions to ${name} in Google Maps`}
+        >
+          <span aria-hidden="true">🧭</span> Open Google Maps for directions
+        </a>
       )}
 
       {/* Data provenance */}
