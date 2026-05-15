@@ -75,6 +75,15 @@ Two simple questions — *injured? blocking traffic?* — and an LLM reorders th
 ### 📶 Genuinely Offline (5-layer)
 Service Worker + localStorage + **Plan-a-Trip pre-cache** + **bundled 28-facility trauma directory** + bundled 196-country national numbers. Pre-fetch hospitals along Chennai→Bengaluru before you leave, then crash anywhere on NH-44 — the right number is still there.
 
+### 🆔 Emergency Medical ID
+Stores blood type, allergies, conditions, medications, and an emergency contact entirely on-device (localStorage — **nothing ever leaves the phone**). A first responder arriving at a crash scene can tap the persistent **🆔 Medical ID** button on the home screen to see this in a high-contrast paramedic-friendly card.
+
+### 📍 Plus Codes (Open Location Code)
+Every crash alert encodes the GPS into a **dispatcher-friendly Plus Code** like `7M5CC9R6+VV` — recognized by Indian 112 ERSS, far easier to communicate by voice than `13.0827, 80.2707`. Encoder is hand-written in pure JS (~80 LOC, **fully offline, zero deps**) — the algorithm lives in `frontend/src/utils/plusCodes.js`.
+
+### 📱 SOS-by-SMS
+When voice fails but SMS still works (very common in cellular dead zones), the crash alert shows a one-tap **SOS-by-SMS** button that pre-composes a message to your emergency contact containing: blood type, allergies, Plus Code, GPS coordinates, and a tap-to-open Google Maps link. Uses the native `sms:` URL scheme — works on iOS and Android.
+
 </td>
 <td>
 

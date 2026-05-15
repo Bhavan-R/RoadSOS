@@ -11,7 +11,7 @@ export function isSpeechSupported() {
 /**
  * Build a human-readable dispatch message from accident context.
  */
-export function buildDispatchText({ landmark, lat, lon, injured, blocking }) {
+export function buildDispatchText({ landmark, lat, lon, plusCode, injured, blocking }) {
   const place = landmark
     ? landmark
     : `GPS ${lat?.toFixed(4)}, ${lon?.toFixed(4)}`;
@@ -29,6 +29,12 @@ export function buildDispatchText({ landmark, lat, lon, injured, blocking }) {
   }
 
   parts.push('Please send emergency services immediately.');
+
+  // Plus Code is dispatcher-friendly — speakable letter-by-letter and
+  // recognized by Indian 112 ERSS. Speak it before raw GPS.
+  if (plusCode) {
+    parts.push(`Location plus code: ${plusCode.split('').join(' ')}.`);
+  }
 
   if (lat != null && lon != null) {
     parts.push(`GPS coordinates: ${lat.toFixed(4)}, ${lon.toFixed(4)}.`);

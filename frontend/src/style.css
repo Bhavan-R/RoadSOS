@@ -990,3 +990,159 @@ code {
   opacity: 0.8;
   margin-top: 4px;
 }
+
+/* ─── Medical ID button (header) ───────────────────────────────────────── */
+.medical-id-btn {
+  background: linear-gradient(135deg, #c0392b, #962d22);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s;
+  position: relative;
+}
+.medical-id-btn:hover  { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(192,57,43,0.4); }
+.medical-id-btn--set   { background: linear-gradient(135deg, #27ae60, #1f8a4c); }
+.medical-id-btn--set:hover { box-shadow: 0 4px 12px rgba(39,174,96,0.4); }
+
+/* ─── Medical ID modal ─────────────────────────────────────────────────── */
+.medical-id__empty {
+  background: rgba(255,255,255,0.04);
+  border: 1px dashed rgba(255,255,255,0.18);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.9;
+  margin: 12px 0;
+}
+.medical-id__card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 18px 16px;
+  margin: 14px 0;
+}
+.medical-id__name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+.medical-id__row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  align-items: baseline;
+}
+.medical-id__row:last-child { border-bottom: none; }
+.medical-id__row-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.medical-id__row-value {
+  font-size: 15px;
+  font-weight: 500;
+  word-break: break-word;
+}
+.medical-id__row--hl .medical-id__row-value {
+  font-weight: 700;
+  color: #ffc6a0;
+}
+.medical-id__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
+.medical-id__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.medical-id__field-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.medical-id__field input {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  outline: none;
+}
+.medical-id__field input:focus { border-color: var(--accent); }
+.medical-id__checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.medical-id__clear {
+  background: transparent;
+  color: #ff6b5e;
+  border: 1px solid rgba(255,107,94,0.4);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+/* ─── Plus Code chip + SOS-by-SMS button (in CrashAlert) ───────────────── */
+.crash-alert__pluscode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(241,196,15,0.12);
+  border: 1px solid rgba(241,196,15,0.4);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 10px 0;
+}
+.crash-alert__pluscode-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.crash-alert__pluscode-value {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffeaa1;
+}
+.crash-alert__sms-btn {
+  display: block;
+  background: linear-gradient(135deg, #16a085, #0e7864);
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 12px 16px;
+  margin: 10px 0 6px;
+  border-radius: 10px;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.crash-alert__sms-btn:hover  { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(22,160,133,0.45); }
+.crash-alert__sms-btn:active { transform: translateY(0); opacity: 0.9; }

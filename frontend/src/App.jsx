@@ -13,6 +13,8 @@ import TriageModal from './components/TriageModal';
 import OfflineBanner from './components/OfflineBanner';
 import CrashAlert from './components/CrashAlert';
 import RoutePlanner from './components/RoutePlanner';
+import MedicalIdModal from './components/MedicalIdModal';
+import { hasMedicalId } from './utils/medicalId';
 import { requestMotionPermission } from './hooks/useLocation';
 import { DEMO_MODE } from './utils/demoMode';
 import { startBackendWarmup } from './utils/backendWarmup';
@@ -100,6 +102,10 @@ export default function App() {
 
   // Trip planner modal
   const [routePlannerOpen, setRoutePlannerOpen] = useState(false);
+
+  // Medical ID modal
+  const [medicalOpen, setMedicalOpen] = useState(false);
+  const [medicalIdConfigured, setMedicalIdConfigured] = useState(() => hasMedicalId());
 
   // GPS hook
   const {
@@ -266,6 +272,17 @@ export default function App() {
           >
             🗺 Plan Trip
           </button>
+          <button
+            type="button"
+            className={`medical-id-btn ${medicalIdConfigured ? 'medical-id-btn--set' : ''}`}
+            onClick={() => setMedicalOpen(true)}
+            title={medicalIdConfigured
+              ? 'View / edit your Medical ID — shown to first responders'
+              : 'Set up your Medical ID so paramedics know your blood type and allergies'}
+            id="medical-id-btn"
+          >
+            🆔 Medical ID{!medicalIdConfigured ? ' ●' : ''}
+          </button>
           {DEMO_MODE && (
             <button
               type="button"
@@ -362,6 +379,15 @@ export default function App() {
       <RoutePlanner
         open={routePlannerOpen}
         onClose={() => setRoutePlannerOpen(false)}
+      />
+
+      {/* ── Emergency Medical ID — paramedic-visible health profile ── */}
+      <MedicalIdModal
+        open={medicalOpen}
+        onClose={() => {
+          setMedicalOpen(false);
+          setMedicalIdConfigured(hasMedicalId());
+        }}
       />
 
       {/* ── Crash alert (velocity collapse detection) ── */}
