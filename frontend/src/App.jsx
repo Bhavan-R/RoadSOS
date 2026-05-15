@@ -87,6 +87,26 @@ const MOCK_CONTACTS = [
     isOpen: false,
     aiReason: null,
   },
+  {
+    id: 'mock-6',
+    name: 'City Motors Showroom',
+    category: 'showroom',
+    phone: '9876543210',
+    distance: 2.1,
+    source: 'Google Places',
+    isOpen: true,
+    aiReason: null,
+  },
+  {
+    id: 'mock-7',
+    name: 'QuickFix Puncture Shop',
+    category: 'tyre',
+    phone: '9988776655',
+    distance: 0.8,
+    source: 'OpenStreetMap',
+    isOpen: true,
+    aiReason: null,
+  },
 ];
 
 const MOCK_DATA = {
@@ -97,7 +117,7 @@ const MOCK_DATA = {
   count: MOCK_CONTACTS.length,
 };
 
-export const CATS = ["All", "Hospital", "Police", "Repair", "Towing", "Fire"];
+export const CATS = ["All", "Hospital", "Police", "Repair", "Towing", "Fire", "Showroom", "Tyre"];
 
 // ─── First-launch detection ───────────────────────────────────────────────────
 const ONBOARDED_KEY = 'roadsos_onboarded_v1';

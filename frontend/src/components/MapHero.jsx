@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hospital, Shield, Ambulance, Truck, Car, PhoneCall, Siren, WifiOff, Map, AlertTriangle } from 'lucide-react';
+import { Hospital, Shield, Ambulance, Truck, Car, PhoneCall, Siren, WifiOff, Map, AlertTriangle, Zap, Cog } from 'lucide-react';
 import { MapBackground, UserDot, ServiceMarker } from './MapBackground';
 import SOSButton from './SOSButton';
 
@@ -10,6 +10,8 @@ const CAT_ICONS = {
   fire: Siren,
   towing: Truck,
   repair: Car,
+  showroom: Car,
+  tyre: Cog
 };
 
 const CAT_TONES = {
@@ -19,6 +21,8 @@ const CAT_TONES = {
   fire: 'red',
   towing: 'teal',
   repair: 'teal',
+  showroom: 'teal',
+  tyre: 'teal'
 };
 
 const CAT_BG = {
