@@ -395,6 +395,7 @@ export default function App() {
         location={activeLocation}
         landmark={searchData?.landmark}
         topContact={topContact}
+        countryCode={countryCode}
         onFirstTap={handleMotionPermissionOnce}
       />
 

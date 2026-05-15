@@ -451,21 +451,87 @@ body {
 }
 .sos-bar__nudge strong { color: var(--text); }
 
-/* Secondary WhatsApp link (multi-contact mode only) */
-.sos-bar__wa-link {
+/* ── SOS follow-up dispatch panel ──────────────────────────────────────────── */
+.sos-dispatch {
   flex: 0 0 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 10px 12px 8px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #25D366;
-  text-decoration: none;
-  padding: 4px 0 0;
+  flex-direction: column;
+  gap: 8px;
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sos-dispatch__header {
+  font-size: 12px;
+  color: var(--text-dim);
   font-weight: 500;
 }
-.sos-bar__wa-link:hover { text-decoration: underline; }
-.sos-bar__wa-icon { font-size: 15px; }
+
+.sos-dispatch__links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sos-dispatch__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sos-dispatch__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sos-dispatch__btns {
+  display: flex;
+  gap: 6px;
+}
+
+.sos-dispatch__btn {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sos-dispatch__btn--wa  { background: #25D366; color: #fff; }
+.sos-dispatch__btn--sms { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
+
+.sos-dispatch__group-link {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-decoration: none;
+  text-align: center;
+  padding: 2px 0;
+}
+.sos-dispatch__group-link:hover { color: var(--text); text-decoration: underline; }
+
+.sos-dispatch__done {
+  align-self: flex-end;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+}
 
 .sos-button {
   flex: 2;
