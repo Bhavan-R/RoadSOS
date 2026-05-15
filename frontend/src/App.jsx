@@ -118,6 +118,7 @@ export default function App() {
   const [medicalIdConfigured, setMedicalIdConfigured] = useState(() => hasMedicalId());
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [dispatchedAt, setDispatchedAt] = useState(null);
+  const [dispatchContext, setDispatchContext] = useState({ isCrash: false, reason: null });
 
   const {
     location: gpsLocation,
@@ -134,8 +135,12 @@ export default function App() {
 
   // Listen for SOS dispatch events to open the dispatch screen
   useEffect(() => {
-    const onDispatch = () => {
+    const onDispatch = (e) => {
       setDispatchedAt(Date.now());
+      setDispatchContext({
+        isCrash: e.detail?.isCrash || false,
+        reason: e.detail?.reason || null
+      });
       setDispatchOpen(true);
     };
     window.addEventListener('roadsos:sos-sent', onDispatch);
@@ -235,6 +240,9 @@ export default function App() {
       setTriageOffline(result._offline === true);
       if (injured || blocking) {
         autoFireSos(activeLocation, searchData?.landmark, countryCode);
+        window.dispatchEvent(new CustomEvent('roadsos:sos-sent', {
+          detail: { isCrash: true, reason: result.reason }
+        }));
       }
     } catch {
       // Backend triage failed — leave contacts in current order, still close modal
@@ -473,6 +481,8 @@ export default function App() {
         contacts={searchData?.contacts || []}
         topContact={topContact}
         dispatchedAt={dispatchedAt}
+        isCrash={dispatchContext.isCrash}
+        triageReason={dispatchContext.reason}
       />
     </div>
   );

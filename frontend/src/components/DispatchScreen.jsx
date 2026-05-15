@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Check, Ambulance } from 'lucide-react';
+import { Check, Ambulance, Navigation2 } from 'lucide-react';
 
 /**
  * DispatchScreen — full-screen "Help is on the way" overlay.
  * Shown after SOS dispatched. Mirrors the FinalDispatch (Glass) design.
  */
-export default function DispatchScreen({ open, onClose, location, landmark, contacts = [], topContact, dispatchedAt }) {
+export default function DispatchScreen({ open, onClose, location, landmark, contacts = [], topContact, dispatchedAt, isCrash = false, triageReason = null }) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -60,29 +60,35 @@ export default function DispatchScreen({ open, onClose, location, landmark, cont
             <Check size={18} color="#22C55E" strokeWidth={3} />
           </div>
           <div>
-            <div className="dx-status-kicker">SOS DISPATCHED · {stamp}</div>
-            <div className="dx-status-title">Help is on the way.</div>
+            <div className="dx-status-kicker">
+              {isCrash ? `SOS DISPATCHED · ${stamp}` : `LOCATION SHARED · ${stamp}`}
+            </div>
+            <div className="dx-status-title">
+              {isCrash ? 'Help is on the way.' : 'Your circle has been notified.'}
+            </div>
           </div>
         </div>
 
-        {/* ETA hero card */}
-        <div className="dx-eta-card">
-          <div>
-            <div className="dx-eta-kicker">AMBULANCE ETA</div>
-            <div className="dx-eta-num">
-              {String(eta).padStart(2, '0')}
-              <span className="dx-eta-unit">min</span>
+        {/* ETA hero card (Only for crashes) */}
+        {isCrash && (
+          <div className="dx-eta-card">
+            <div>
+              <div className="dx-eta-kicker">AMBULANCE ETA</div>
+              <div className="dx-eta-num">
+                {String(eta).padStart(2, '0')}
+                <span className="dx-eta-unit">min</span>
+              </div>
+              <div className="dx-eta-source">
+                {hospitalContact?.name || 'Apollo Hospital'} ·{' '}
+                {typeof hospitalContact?.distance === 'number' ? hospitalContact.distance.toFixed(1) : '2.1'} km
+              </div>
             </div>
-            <div className="dx-eta-source">
-              {hospitalContact?.name || 'Apollo Hospital'} ·{' '}
-              {typeof hospitalContact?.distance === 'number' ? hospitalContact.distance.toFixed(1) : '2.1'} km
+            <div className="dx-eta-icon">
+              <div className="dx-eta-halo" />
+              <Ambulance size={26} color="#fff" strokeWidth={2.2} />
             </div>
           </div>
-          <div className="dx-eta-icon">
-            <div className="dx-eta-halo" />
-            <Ambulance size={26} color="#fff" strokeWidth={2.2} />
-          </div>
-        </div>
+        )}
 
         {/* What we sent */}
         <div className="dx-section">
@@ -103,21 +109,27 @@ export default function DispatchScreen({ open, onClose, location, landmark, cont
             </span>
           </div>
 
-          <div className="dx-row">
-            <div>
-              <div className="dx-row-label">SPEED AT IMPACT</div>
-              <div className="dx-row-value dx-row-value-mono dx-row-blue">— km/h</div>
-            </div>
-            <span className="dx-row-tag">CAPTURED</span>
-          </div>
+          {isCrash && (
+            <>
+              <div className="dx-row">
+                <div>
+                  <div className="dx-row-label">SPEED AT IMPACT</div>
+                  <div className="dx-row-value dx-row-value-mono dx-row-blue">— km/h</div>
+                </div>
+                <span className="dx-row-tag">CAPTURED</span>
+              </div>
 
-          <div className="dx-row">
-            <div>
-              <div className="dx-row-label">TRIAGE</div>
-              <div className="dx-row-value dx-row-red">Crash detected · Auto-dispatched</div>
-            </div>
-            <span className="dx-row-tag">CAPTURED</span>
-          </div>
+              <div className="dx-row">
+                <div>
+                  <div className="dx-row-label">TRIAGE</div>
+                  <div className="dx-row-value dx-row-red">
+                    {triageReason || 'Crash detected · Auto-dispatched'}
+                  </div>
+                </div>
+                <span className="dx-row-tag">CAPTURED</span>
+              </div>
+            </>
+          )}
 
           <div className="dx-row">
             <div>
@@ -172,7 +184,7 @@ export default function DispatchScreen({ open, onClose, location, landmark, cont
               <div className="dx-circle-status">
                 <div className="dx-circle-status-line dx-circle-dispatched">
                   <Check size={11} strokeWidth={3} />
-                  DISPATCHED
+                  {isCrash ? 'DISPATCHED' : 'ALERTED'}
                 </div>
                 <div className="dx-circle-time">just now</div>
               </div>
