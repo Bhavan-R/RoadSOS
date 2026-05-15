@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Navigation, Signal, WifiOff, ChevronDown, AlertTriangle } from 'lucide-react';
+import { WifiOff, ChevronDown, AlertTriangle } from 'lucide-react';
 import { useLocation } from './hooks/useLocation';
 import { useNetwork } from './hooks/useNetwork';
 import { searchNearby } from './utils/overpass';
@@ -15,7 +15,7 @@ import ContactList from './components/ContactList';
 import SOSButton from './components/SOSButton';
 import TriageModal from './components/TriageModal';
 import CrashAlert from './components/CrashAlert';
-import LocationCard from './components/LocationCard';
+// LocationCard.jsx exists but is unused — MapHero handles location display
 import OfflineBanner from './components/OfflineBanner';
 import RoutePlanner from './components/RoutePlanner';
 import MedicalIdModal from './components/MedicalIdModal';

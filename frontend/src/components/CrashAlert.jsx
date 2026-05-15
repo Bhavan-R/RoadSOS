@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { AlertTriangle, Volume2, Bot, PhoneCall, ShieldOff, Check, Ambulance, Shield, Phone, MapPin, Copy, X, Navigation2 } from "lucide-react";
+import { Bot, PhoneCall, Check, Ambulance, Shield, Phone, Copy, X, Navigation2 } from "lucide-react";
 import { speakText, buildDispatchText, cancelSpeech } from '../utils/speechUtils';
 import { startAlarm, stopAlarm } from '../utils/alarmUtils';
-import { safeAutoDial, guardedTelDial, DEMO_MODE } from '../utils/demoMode';
+import { safeAutoDial, guardedTelDial } from '../utils/demoMode';
 import { encodePlusCode } from '../utils/plusCodes';
 import { isWaCountry, buildSosLinks } from '../utils/sosDispatch';
 
@@ -223,10 +223,42 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
           </div>
         </div>
 
+        {/* Mode selection — Auto or Manual */}
+        <div className="cf-modes">
+          <button className="cf-mode cf-mode--auto" onClick={triggerAutomatic}>
+            <Bot size={20} strokeWidth={2.2} />
+            <span className="cf-mode-title">Automatic</span>
+            <span className="cf-mode-desc">Calls + notifies contacts</span>
+          </button>
+          <button className="cf-mode cf-mode--manual" onClick={handleChooseManual}>
+            <PhoneCall size={20} strokeWidth={2.2} />
+            <span className="cf-mode-title">Manual</span>
+            <span className="cf-mode-desc">I'll call — contacts notified</span>
+          </button>
+        </div>
+
         {/* Raised "I'M OK — CANCEL" button */}
         <button className="cf-cancel-btn" onClick={handleCancelAuto}>
           I'M OK — CANCEL
         </button>
+
+        {/* PIN-gated false alarm cancel */}
+        <div className="cf-pin-zone">
+          <div className="cf-pin-label">False alarm? Enter PIN to silence:</div>
+          <div className="cf-pin-row">
+            <input
+              className={`cf-pin-input ${pinError ? 'cf-pin-input--error' : ''}`}
+              type="tel" inputMode="numeric" maxLength={4}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+              placeholder="0000"
+            />
+            <button className="cf-pin-btn" onClick={handleCancelFalseAlarm} disabled={pin.length !== 4}>
+              Stop alarm
+            </button>
+          </div>
+          {pinError && <div className="cf-pin-error">Incorrect PIN</div>}
+        </div>
 
         {/* Spacer pushes Send SOS Now toward bottom */}
         <div className="cf-spacer" />

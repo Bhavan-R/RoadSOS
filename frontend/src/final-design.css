@@ -1654,10 +1654,48 @@
   line-height: 1.55;
 }
 
-.cf-cancel-btn {
-  margin-top: 28px;
+/* Auto / Manual mode selection */
+.cf-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
   width: 100%;
-  height: 64px;
+}
+
+.cf-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s;
+}
+
+.cf-mode:active { background: rgba(0, 0, 0, 0.35); }
+
+.cf-mode-title {
+  font-family: var(--rs-font-display);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.cf-mode-desc {
+  font-size: 11px;
+  opacity: 0.75;
+  line-height: 1.3;
+}
+
+.cf-cancel-btn {
+  margin-top: 18px;
+  width: 100%;
+  height: 60px;
   border-radius: 16px;
   background: #fff;
   color: var(--rs-red-700);
@@ -1670,9 +1708,67 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
+/* PIN false-alarm cancel */
+.cf-pin-zone {
+  margin-top: 14px;
+  width: 100%;
+  text-align: center;
+}
+
+.cf-pin-label {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+
+.cf-pin-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.cf-pin-input {
+  width: 80px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  text-align: center;
+  font-family: var(--rs-font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+}
+
+.cf-pin-input::placeholder { color: rgba(255, 255, 255, 0.3); }
+.cf-pin-input--error { border-color: #FCD34D; animation: rs-blink 0.3s 2; }
+
+.cf-pin-btn {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-family: var(--rs-font-display);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cf-pin-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cf-pin-error {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #FCD34D;
+  font-weight: 600;
+}
+
 .cf-spacer {
   flex: 1;
-  min-height: 14px;
+  min-height: 10px;
 }
 
 .cf-send-now {
