@@ -1,33 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { getMedicalId, buildSosSmsBody, buildSosSmsHref } from '../utils/medicalId';
+import { encodePlusCode } from '../utils/plusCodes';
 
 /**
  * SOSButton — sticky bottom bar with:
- *   1. Big red SOS button → WhatsApp deep link (SMS fallback)
+ *   1. Big red SOS button — sends directly to Medical ID emergency contact
+ *      via WhatsApp (or SMS if WA is unavailable). Falls back to share
+ *      sheet if no contact is configured.
  *   2. Copy-coordinates button
  *
  * Props:
  *   location   { lat, lon, source }
  *   landmark   string | null
- *   topContact { name, phone } | null
+ *   topContact { name, phone } | null  (nearest hospital/police — shown in message)
  *   onFirstTap function — called once on first tap (iOS motion permission)
  */
 
-function buildSOSMessage({ lat, lon, landmark, topContact }) {
-  const latStr = typeof lat === 'number' ? lat.toFixed(5) : '?';
-  const lonStr = typeof lon === 'number' ? lon.toFixed(5) : '?';
+/** Strip everything except digits and a leading + so WhatsApp / sms: accept it. */
+function cleanPhone(raw) {
+  return (raw || '').replace(/[^\d+]/g, '');
+}
 
-  const lines = [
-    'ROAD ACCIDENT. I need help.',
-    `Location: ${latStr}, ${lonStr}`,
-    `Nearest landmark: ${landmark || 'unknown'}`,
-  ];
-
-  if (topContact?.name) {
-    const phoneStr = topContact.phone ? ` at ${topContact.phone}` : '';
-    lines.push(`Call: ${topContact.name}${phoneStr}`);
-  }
-
-  return lines.join('\n');
+/** wa.me direct-chat URL — includes country code, no spaces / dashes. */
+function waDirectUrl(phone, body) {
+  // wa.me requires the number WITHOUT the leading +
+  const num = cleanPhone(phone).replace(/^\+/, '');
+  return `https://wa.me/${num}?text=${encodeURIComponent(body)}`;
 }
 
 export default function SOSButton({ location, landmark, topContact, onFirstTap }) {
@@ -36,6 +34,49 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
   const tappedRef = React.useRef(false);
 
   const hasLocation = !!(location?.lat && location?.lon);
+
+  // ── Derive contact + message once per location / landmark change ──────────
+  const { contactName, contactPhone, waUrl, smsUrl, hasContact } = useMemo(() => {
+    const m = getMedicalId();
+    const phone = m.primaryContactPhone || '';
+    const name  = m.primaryContactName  || 'emergency contact';
+
+    if (!hasLocation) {
+      return { contactName: name, contactPhone: phone, waUrl: '', smsUrl: '', hasContact: !!phone };
+    }
+
+    const plusCode = encodePlusCode(location.lat, location.lon);
+
+    // Rich SOS body — same one used in CrashAlert. Includes blood type,
+    // allergies, Plus Code, and a Google Maps link for the recipient.
+    const body = buildSosSmsBody({
+      lat: location.lat,
+      lon: location.lon,
+      plusCode,
+      landmark,
+    });
+
+    if (phone) {
+      return {
+        contactName : name,
+        contactPhone: phone,
+        waUrl       : waDirectUrl(phone, body),
+        smsUrl      : buildSosSmsHref(phone, body),
+        hasContact  : true,
+      };
+    }
+
+    // No emergency contact set — fall back to WhatsApp share sheet so the
+    // user can at least pick someone manually.
+    const encoded = encodeURIComponent(body);
+    return {
+      contactName : '',
+      contactPhone: '',
+      waUrl       : `https://wa.me/?text=${encoded}`,
+      smsUrl      : `sms:?body=${encoded}`,
+      hasContact  : false,
+    };
+  }, [location?.lat, location?.lon, landmark]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SOS tap ───────────────────────────────────────────────────────────────
   const handleSOS = () => {
@@ -47,17 +88,8 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
 
     if (!hasLocation) return;
 
-    const message  = buildSOSMessage({
-      lat: location.lat,
-      lon: location.lon,
-      landmark,
-      topContact,
-    });
-    const encoded  = encodeURIComponent(message);
-    const waUrl    = `https://wa.me/?text=${encoded}`;
-    const smsUrl   = `sms:?body=${encoded}`;
-
-    // Open WhatsApp; if blocked/unavailable fall back to SMS after 800ms
+    // Try WhatsApp first (direct to contact if set, share sheet otherwise).
+    // If WA is blocked or the device has no WA, fall back to SMS after 800ms.
     const win = window.open(waUrl, '_blank');
     setSent(true);
     setTimeout(() => {
@@ -70,10 +102,10 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
 
   // ── Copy coords ───────────────────────────────────────────────────────────
   const handleCopyCoords = async () => {
-    const text = hasLocation 
+    const text = hasLocation
       ? `${location.lat.toFixed(5)}, ${location.lon.toFixed(5)}`
-      : "Searching for GPS coordinates...";
-    
+      : 'Searching for GPS coordinates...';
+
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -83,15 +115,36 @@ export default function SOSButton({ location, landmark, topContact, onFirstTap }
     }
   };
 
+  // ── Label ─────────────────────────────────────────────────────────────────
+  const btnLabel = sent
+    ? '📤 Sending...'
+    : !hasLocation
+      ? '🆘 SOS — Waiting for GPS'
+      : hasContact
+        ? `🆘 SOS → ${contactName}`
+        : '🆘 SOS — Send Location';
+
+  const btnTitle = hasContact
+    ? `Send SOS with your location and medical info directly to ${contactName} (${contactPhone}) via WhatsApp`
+    : 'Send SOS via WhatsApp — set an emergency contact in Medical ID for one-tap direct messaging';
+
   return (
     <div className="sos-bar">
+      {/* Nudge when no emergency contact is configured */}
+      {!hasContact && hasLocation && (
+        <div className="sos-bar__nudge">
+          ⚠️ No emergency contact set — <strong>Medical ID</strong> for direct SOS
+        </div>
+      )}
+
       <button
         id="sos-main-btn"
-        className={`sos-button ${sent ? 'sos-button--sent' : ''}`}
+        className={`sos-button ${sent ? 'sos-button--sent' : ''} ${!hasContact ? 'sos-button--no-contact' : ''}`}
         onClick={handleSOS}
-        aria-label="Send SOS with your location via WhatsApp"
+        aria-label={btnTitle}
+        title={btnTitle}
       >
-        {sent ? '📤 Sending...' : (!hasLocation ? '🆘 SOS — Use Best Location' : '🆘 SOS — Send Location')}
+        {btnLabel}
       </button>
 
       <button

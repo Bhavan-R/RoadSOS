@@ -436,9 +436,20 @@ body {
   background: var(--bg-elev);
   border-top: 1px solid var(--border);
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   z-index: 20;
 }
+
+/* "No contact set" nudge — full width, sits above the buttons */
+.sos-bar__nudge {
+  flex: 0 0 100%;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 2px 0 0;
+}
+.sos-bar__nudge strong { color: var(--text); }
 
 .sos-button {
   flex: 2;
