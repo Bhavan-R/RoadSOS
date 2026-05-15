@@ -1307,3 +1307,22 @@ code {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ─── Manual triage trigger ────────────────────────────────────────────── */
+.triage-trigger-btn {
+  display: block;
+  width: 100%;
+  background: linear-gradient(135deg, #2980b9, #1e6091);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 11px 16px;
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.triage-trigger-btn:hover  { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(41,128,185,0.4); }
+.triage-trigger-btn:active { transform: translateY(0); opacity: 0.92; }
+.triage-trigger-btn--redo  { background: linear-gradient(135deg, #4a5568, #2d3748); }

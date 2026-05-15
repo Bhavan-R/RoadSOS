@@ -55,7 +55,7 @@ function cacheSet(prefix, q, v) {
  */
 export async function searchPlaces(query, limit = 5) {
   const q = (query || '').trim();
-  if (q.length < 2) return [];
+  if (q.length < 1) return [];
 
   const cached = cacheGet(SUGGEST_KEY_PREFIX, q);
   if (cached) return cached.slice(0, limit);
@@ -104,7 +104,7 @@ export async function searchPlaces(query, limit = 5) {
  */
 export async function geocodePlace(query) {
   const q = (query || '').trim();
-  if (q.length < 2) return null;
+  if (q.length < 1) return null;
   // Use the legacy single-hit cache so we don't double-store.
   const cached = cacheGet(CACHE_KEY_PREFIX, q);
   if (cached) return cached;

@@ -32,14 +32,16 @@ function PlaceInput({ label, value, onChange, onGeocoded, geo, disabled, id }) {
   const debounceRef = useRef(null);
   const wrapRef     = useRef(null);
 
-  // Fetch suggestions whenever the typed value changes (debounced 350ms).
-  // A keystroke after a successful selection clears the resolved geo so
-  // the user can amend without leftover "✓" state.
+  // Fetch suggestions on every keystroke (debounced 200ms). Starts from
+  // the *first* character so the dropdown feels responsive — same as
+  // Google Maps' autocomplete. A keystroke after a successful selection
+  // clears the resolved geo so the user can amend without leftover "✓".
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const q = (value || '').trim();
-    if (q.length < 2 || (geo && geo.query === q)) {
+    if (q.length < 1 || (geo && geo.query === q)) {
       setSuggestions([]);
+      setShowList(false);
       return;
     }
     debounceRef.current = setTimeout(async () => {
@@ -49,7 +51,7 @@ function PlaceInput({ label, value, onChange, onGeocoded, geo, disabled, id }) {
       setSuggestions(list);
       setShowList(list.length > 0);
       setActiveIdx(-1);
-    }, 350);
+    }, 200);
     return () => clearTimeout(debounceRef.current);
   }, [value, geo]);
 

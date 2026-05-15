@@ -19,11 +19,18 @@ beforeEach(() => {
 });
 
 describe('geocodePlace', () => {
-  it('returns null for very short queries (< 2 chars)', async () => {
+  it('returns null for empty queries but accepts 1-char prefixes', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ lat: '1', lon: '2', display_name: 'Test' }],
+    });
     const { geocodePlace } = await import('../geocode');
     expect(await geocodePlace('')).toBeNull();
-    expect(await geocodePlace('a')).toBeNull();
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(await geocodePlace('   ')).toBeNull();
+    // 1-char queries DO hit the network so autocomplete feels responsive
+    // from the first keystroke (Google-Maps style).
+    expect(await geocodePlace('g')).not.toBeNull();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
   it('returns lat/lon/displayName for a successful lookup', async () => {
@@ -110,11 +117,19 @@ describe('searchPlaces (autocomplete)', () => {
     expect(out.every((r) => isFinite(r.lat) && isFinite(r.lon))).toBe(true);
   });
 
-  it('returns [] for an empty / too-short query', async () => {
+  it('returns [] for an empty query but accepts 1-char prefixes', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [
+        { lat: '12.0', lon: '77.0', display_name: 'Goa, India' },
+      ],
+    });
     const { searchPlaces } = await import('../geocode');
     expect(await searchPlaces('')).toEqual([]);
-    expect(await searchPlaces('a')).toEqual([]);
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(await searchPlaces('   ')).toEqual([]);
+    const oneChar = await searchPlaces('g');
+    expect(oneChar.length).toBeGreaterThan(0);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
   it('caches suggestion lists per-query', async () => {

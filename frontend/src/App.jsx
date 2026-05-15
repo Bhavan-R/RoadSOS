@@ -170,7 +170,6 @@ export default function App() {
         const data = await searchNearby(searchLat, searchLon, controller.signal);
         if (cancelled) return;
         setSearchData(data);
-        setTriageOpen(true);
         saveSearchResult(searchLat, searchLon, data);
       } catch (err) {
         if (cancelled) return;
@@ -186,7 +185,6 @@ export default function App() {
         if (cached) {
           setSearchData(cached);
           setCachedAt(cached.cachedAt);
-          setTriageOpen(true);
         } else {
           const bundled = buildBundledSearchResult(searchLat, searchLon, {
             maxKm: 80,
@@ -195,7 +193,6 @@ export default function App() {
           if (bundled) {
             console.info('[RoadSOS] Live + cache miss — serving bundled directory');
             setSearchData(bundled);
-            setTriageOpen(true);
             setSearchError(
               isOnline
                 ? 'Network issue — showing pre-loaded directory.'
@@ -205,7 +202,6 @@ export default function App() {
             // Final fallback so the UI is never empty during a demo.
             console.warn('[RoadSOS] Backend + cache + bundle all empty — using mock data:', err.message);
             setSearchData(MOCK_DATA);
-            setTriageOpen(true);
             setSearchError(
               isOnline
                 ? 'Could not reach server — showing demo data.'
@@ -341,6 +337,28 @@ export default function App() {
             Nearby services — hospitals · police · ambulance · towing · repair
           </span>
         </div>
+
+        {/* Manual triage trigger — opt-in, not auto-open on every search */}
+        {searchData?.contacts?.length > 0 && !triaged && (
+          <button
+            type="button"
+            className="triage-trigger-btn"
+            onClick={() => setTriageOpen(true)}
+            id="open-triage-btn"
+            title="Tell us if anyone is injured or the vehicle is blocking traffic — we'll reorder the list by priority"
+          >
+            🤖 Prioritise for my situation
+          </button>
+        )}
+        {triaged && (
+          <button
+            type="button"
+            className="triage-trigger-btn triage-trigger-btn--redo"
+            onClick={() => setTriageOpen(true)}
+          >
+            🔄 Re-prioritise
+          </button>
+        )}
 
         {/* Contact list */}
         <ContactList
