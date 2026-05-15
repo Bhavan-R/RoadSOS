@@ -15,6 +15,7 @@ import CrashAlert from './components/CrashAlert';
 import RoutePlanner from './components/RoutePlanner';
 import MedicalIdModal from './components/MedicalIdModal';
 import { hasMedicalId } from './utils/medicalId';
+import { autoFireSos } from './utils/sosDispatch';
 import { requestMotionPermission } from './hooks/useLocation';
 import { DEMO_MODE } from './utils/demoMode';
 import { startBackendWarmup } from './utils/backendWarmup';
@@ -238,15 +239,21 @@ export default function App() {
       const result = await triageContacts(injured, blocking, searchData.contacts);
       setSearchData(prev => ({ ...prev, contacts: result.contacts, reason: result.reason }));
       setTriaged(true);
-      // _offline flag is set by ruleBasedTriage() when network wasn't available
       setTriageOffline(result._offline === true);
+
+      // Auto-send SOS to emergency contacts when the user confirms a real
+      // emergency (injured OR blocking traffic). This fires alongside the
+      // triage re-ordering so contacts are notified without an extra step.
+      if (injured || blocking) {
+        autoFireSos(activeLocation, searchData?.landmark, countryCode);
+      }
     } catch {
       // Should never reach here, but defensive just in case
     } finally {
       setTriageLoading(false);
       setTriageOpen(false);
     }
-  }, [searchData]);
+  }, [searchData, activeLocation, countryCode]);
 
   // ── Derived values ─────────────────────────────────────────────────────
   const countryCode = searchData?.country_code || activeLocation?.country_code || 'IN';
@@ -432,6 +439,7 @@ export default function App() {
         numbers={numbers}
         location={activeLocation}
         landmark={searchData?.landmark}
+        countryCode={countryCode}
       />
     </div>
   );

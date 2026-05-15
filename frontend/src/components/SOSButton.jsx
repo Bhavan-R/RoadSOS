@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { getEmergencyContacts, buildSosSmsBody } from '../utils/medicalId';
 import { encodePlusCode } from '../utils/plusCodes';
+import { isWaCountry } from '../utils/sosDispatch';
 
 /**
  * SOSButton — sticky bottom bar.
@@ -28,34 +29,7 @@ import { encodePlusCode } from '../utils/plusCodes';
  *   onFirstTap  function — called once on first tap (iOS motion permission)
  */
 
-// ─── WhatsApp-dominant countries ─────────────────────────────────────────────
-// Source: WhatsApp penetration research (>50 % smartphone users on WA)
-const WA_COUNTRIES = new Set([
-  // South Asia
-  'IN','PK','BD','LK','NP','BT',
-  // Southeast Asia
-  'ID','MY','SG','PH','MM','KH','LA','BN',
-  // Latin America
-  'BR','MX','AR','CO','VE','PE','CL','BO','PY','UY','EC','CR','PA','GT',
-  'HN','SV','NI','DO','CU','PR',
-  // Europe (WA dominant even over SMS in most countries)
-  'DE','IT','ES','NL','FR','PT','BE','AT','CH','PL','RO','GR','HU',
-  'CZ','SK','BG','HR','RS','SI','BA','MK','AL','LT','LV','EE','FI',
-  'SE','NO','DK','IE','GB',
-  // Middle East & North Africa
-  'SA','AE','KW','QA','BH','OM','YE','JO','LB','IQ','SY','EG','LY',
-  'TN','DZ','MA','MR','SD',
-  // Africa
-  'NG','ZA','KE','GH','ET','TZ','UG','RW','SN','CI','CM','AO','MZ',
-  'ZM','ZW','BW','NA','MW',
-  // Other
-  'TR','IL','UA','RU',
-]);
-
-/** Returns true if WhatsApp is the dominant messaging platform for this country. */
-function isWaCountry(code) {
-  return WA_COUNTRIES.has((code || 'IN').toUpperCase());
-}
+// isWaCountry imported from sosDispatch.js
 
 function cleanPhone(raw) {
   return (raw || '').replace(/[^\d+]/g, '');

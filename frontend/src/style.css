@@ -1263,6 +1263,62 @@ code {
 .crash-alert__sms-btn:hover  { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(22,160,133,0.45); }
 .crash-alert__sms-btn:active { transform: translateY(0); opacity: 0.9; }
 
+/* SOS auto-sent confirmation + follow-up links (inside CrashAlert) */
+.crash-alert__sos-sent {
+  background: rgba(37,211,102,0.12);
+  border: 1px solid rgba(37,211,102,0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 10px 0 4px;
+}
+.crash-alert__sos-sent-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: #25D366;
+  margin-bottom: 8px;
+}
+.crash-alert__sos-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.crash-alert__sos-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.crash-alert__sos-name {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crash-alert__sos-btns {
+  display: flex;
+  gap: 6px;
+}
+.crash-alert__sos-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.crash-alert__sos-btn--wa  { background: #25D366; color: #fff; }
+.crash-alert__sos-btn--sms { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+.crash-alert__sos-group-sms {
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  text-decoration: none;
+  text-align: center;
+  margin-top: 2px;
+}
+.crash-alert__sos-group-sms:hover { color: #fff; text-decoration: underline; }
+
 /* ─── Route planner v2: text inputs + chips ───────────────────────────── */
 .route-planner__input-wrap {
   position: relative;
