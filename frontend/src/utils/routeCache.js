@@ -131,19 +131,5 @@ export async function prefetchRoute(origin, destination, opts = {}) {
   return { cached, total, polylineSource };
 }
 
-/** A short list of preset Indian city coordinates for the UI dropdown. */
-export const CITY_PRESETS = [
-  { code: 'MAA', name: 'Chennai',     lat: 13.0827, lon: 80.2707 },
-  { code: 'BLR', name: 'Bengaluru',   lat: 12.9716, lon: 77.5946 },
-  { code: 'CJB', name: 'Coimbatore',  lat: 11.0168, lon: 76.9558 },
-  { code: 'IXM', name: 'Madurai',     lat:  9.9252, lon: 78.1198 },
-  { code: 'TRZ', name: 'Trichy',      lat: 10.7905, lon: 78.7047 },
-  { code: 'SXV', name: 'Salem',       lat: 11.6643, lon: 78.1460 },
-  { code: 'VLR', name: 'Vellore',     lat: 12.9165, lon: 79.1325 },
-  { code: 'PNY', name: 'Puducherry',  lat: 11.9416, lon: 79.8083 },
-  { code: 'BOM', name: 'Mumbai',      lat: 19.0760, lon: 72.8777 },
-  { code: 'DEL', name: 'New Delhi',   lat: 28.6139, lon: 77.2090 },
-  { code: 'HYD', name: 'Hyderabad',   lat: 17.3850, lon: 78.4867 },
-  { code: 'CCU', name: 'Kolkata',     lat: 22.5726, lon: 88.3639 },
-  { code: 'PNQ', name: 'Pune',        lat: 18.5204, lon: 73.8567 },
-];
+// Quick-pick city presets moved to `geocode.js` (`QUICK_PICK_CITIES`)
+// alongside the free-text geocoder they back up.

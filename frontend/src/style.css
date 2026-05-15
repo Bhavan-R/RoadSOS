@@ -1146,3 +1146,107 @@ code {
 }
 .crash-alert__sms-btn:hover  { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(22,160,133,0.45); }
 .crash-alert__sms-btn:active { transform: translateY(0); opacity: 0.9; }
+
+/* ─── Route planner v2: text inputs + chips ───────────────────────────── */
+.route-planner__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.route-planner__field input[type="text"] {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 8px;
+  padding: 10px 36px 10px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  outline: none;
+  width: 100%;
+}
+.route-planner__field input[type="text"]:focus { border-color: var(--accent); }
+.route-planner__field input[type="text"]:disabled { opacity: 0.5; }
+.route-planner__input-status {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #27ae60;
+  pointer-events: none;
+}
+.route-planner__input-status--err { color: #e67e22; }
+.route-planner__field-hint {
+  font-size: 11px;
+  opacity: 0.65;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.route-planner__field-hint--err { color: #e67e22; opacity: 0.9; }
+
+.route-planner__quick-row {
+  margin: 8px 0 4px;
+}
+.route-planner__locate-btn {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  border: 1px dashed rgba(255,255,255,0.25);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.route-planner__locate-btn:hover    { border-color: var(--accent); }
+.route-planner__locate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.route-planner__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 4px;
+  align-items: center;
+}
+.route-planner__chips-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-right: 4px;
+}
+.route-planner__chip {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.route-planner__chip:hover { background: rgba(255,255,255,0.12); border-color: var(--accent); }
+
+/* ─── Maps link on ContactCard ─────────────────────────────────────────── */
+.maps-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(66,133,244,0.10);
+  color: #8ab4f8;
+  border: 1px solid rgba(66,133,244,0.32);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.12s, transform 0.1s;
+}
+.maps-link:hover  { background: rgba(66,133,244,0.18); }
+.maps-link:active { transform: translateY(1px); }
