@@ -167,7 +167,6 @@ export default function App() {
         const data = await searchNearby(searchLat, searchLon, controller.signal);
         if (cancelled) return;
         setSearchData(data);
-        setTriageOpen(true);
         saveSearchResult(searchLat, searchLon, data);
       } catch (err) {
         if (cancelled) return;
@@ -176,13 +175,11 @@ export default function App() {
         if (cached) {
           setSearchData(cached);
           setCachedAt(cached.cachedAt);
-          setTriageOpen(true);
         } else {
           const bundled = buildBundledSearchResult(searchLat, searchLon, { maxKm: 80, limit: 8 });
           if (bundled) {
             console.info('[RoadSOS] Live + cache miss — serving bundled directory');
             setSearchData(bundled);
-            setTriageOpen(true);
             setSearchError(
               isOnline
                 ? 'Network issue — showing pre-loaded directory.'
@@ -196,7 +193,6 @@ export default function App() {
               landmark: null,
               country_code: activeLocation?.country_code || MOCK_DATA.country_code,
             });
-            setTriageOpen(true);
             setSearchError(
               isOnline
                 ? 'Could not reach server — showing demo data.'
@@ -277,26 +273,34 @@ export default function App() {
                   >
                     🆔 ID{!medicalIdConfigured ? ' ●' : ''}
                   </button>
-                  <button className="test-crash-btn" onClick={() => setCrashOpen(true)} title="Test crash alert">
-                    <AlertTriangle size={12} strokeWidth={2.5} style={{ marginRight: 4 }} />
-                    TEST CRASH
-                  </button>
+                  {DEMO_MODE && (
+                    <button className="test-crash-btn" onClick={() => setCrashOpen(true)} title="Test crash alert">
+                      <AlertTriangle size={12} strokeWidth={2.5} style={{ marginRight: 4 }} />
+                      TEST CRASH
+                    </button>
+                  )}
                 </div>
-                
+
                 <div className="telemetry-ping-container">
                   <span className={`telemetry-ping ${!isOnline ? 'offline' : ''}`} />
                   <span className={`telemetry-ping-dot ${!isOnline ? 'offline' : ''}`} />
                 </div>
-                <div className="gps-dropdown-wrapper">
+                {DEMO_MODE ? (
+                  <div className="gps-dropdown-wrapper">
+                    <span className="telemetry-status-text">
+                      {isOnline ? (demoIdx === 0 ? 'MY GPS ACTIVE' : DEMO_LOCATIONS[demoIdx].label) : 'OFFLINE MODE'}
+                    </span>
+                    <ChevronDown size={12} color="#9ca3af" />
+                    <select className="gps-dropdown-select" value={demoIdx} onChange={(e) => setDemoIdx(Number(e.target.value))}>
+                      <option disabled>📍 GPS</option>
+                      {DEMO_LOCATIONS.map((d, i) => <option key={i} value={i}>{d.label}</option>)}
+                    </select>
+                  </div>
+                ) : (
                   <span className="telemetry-status-text">
-                    {isOnline ? (demoIdx === 0 ? 'MY GPS ACTIVE' : DEMO_LOCATIONS[demoIdx].label) : 'OFFLINE MODE'}
+                    {isOnline ? 'MY GPS ACTIVE' : 'OFFLINE MODE'}
                   </span>
-                  <ChevronDown size={12} color="#9ca3af" />
-                  <select className="gps-dropdown-select" value={demoIdx} onChange={(e) => setDemoIdx(Number(e.target.value))}>
-                    <option disabled>📍 GPS</option>
-                    {DEMO_LOCATIONS.map((d, i) => <option key={i} value={i}>{d.label}</option>)}
-                  </select>
-                </div>
+                )}
               </div>
             </div>
 
@@ -353,9 +357,32 @@ export default function App() {
         <span className="sec-title">Nearby Services</span>
         <span className="sec-note">
           {searchLoading ? 'Searching...' : `${searchData?.count ?? searchData?.contacts?.length ?? 0} found`}
-          {triaged && ' ✨ AI'}
+          {triaged && (triageOffline ? ' ⚡ Prioritised' : ' ✨ AI')}
         </span>
       </div>
+
+      {/* Manual triage trigger — opt-in, not auto-open on every search */}
+      {searchData?.contacts?.length > 0 && !triaged && (
+        <button
+          type="button"
+          className="triage-trigger-btn"
+          onClick={() => setTriageOpen(true)}
+          id="open-triage-btn"
+          title="Tell us if anyone is injured or the vehicle is blocking traffic — we'll reorder by priority"
+        >
+          🤖 Prioritise for my situation
+        </button>
+      )}
+      {triaged && (
+        <button
+          type="button"
+          className="triage-trigger-btn triage-trigger-btn--redo"
+          onClick={() => setTriageOpen(true)}
+        >
+          🔄 Re-prioritise
+        </button>
+      )}
+
       <ContactList
         contacts={searchData?.contacts}
         loading={searchLoading}
