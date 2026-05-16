@@ -1,27 +1,21 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import indiaBoundary from '../data/india-boundary.json';
 
 /**
  * Real GPS-anchored map using Leaflet + OpenStreetMap tiles.
  *
- * Tile provider: CartoDB Dark Matter (free, no API key, matches our dark theme).
- * Attribution is legally required for OSM — rendered in bottom-right at small size.
- *
- * Indian boundary overlay:
- *   When the user's country code resolves to 'IN', the map renders the
- *   Government-of-India official boundary on top of the OSM tiles. This
- *   complies with India's legal requirement that maps shown within India
- *   include the entire claimed territory: full Jammu & Kashmir (including
- *   Gilgit-Baltistan / PoK), Aksai Chin, and Arunachal Pradesh. OSM tiles
- *   alone show the de-facto Line of Actual Control, not the Indian claim.
+ * Tile provider: CartoDB Dark Matter (free, no API key, matches our dark
+ * theme). The tiles cover the entire globe — every country, every ocean.
+ * Attribution is legally required for OSM — rendered in bottom-right at
+ * small size.
  *
  * Props:
  *   - location: { lat, lon } user position (centers the map)
  *   - contacts: array of { id, name, category, lat, lon, distance, phone }
- *   - countryCode: ISO-3166 alpha-2 from reverse geocode (drives boundary overlay)
+ *   - countryCode: ISO-3166 alpha-2 from reverse geocode (currently unused
+ *     by the map renderer — reserved for future country-specific overlays)
  *   - gpsLost: dim user dot if GPS is stale
  *   - draggable: pan/pinch enabled (default true — user can explore)
  *   - zoom: initial zoom level (default 15 = neighbourhood)
@@ -54,19 +48,6 @@ const CAT_EMOJI = {
   repair: '🔧',
   showroom: '🚗',
   tyre: '🛞',
-};
-
-// Styling for the official Indian boundary overlay.
-// Saffron stroke (#FF9933) is the top band of the Indian flag — picked
-// for cultural identity and high contrast on the dark basemap.
-const INDIA_BOUNDARY_STYLE = {
-  color: '#FF9933',
-  weight: 2.2,
-  opacity: 0.9,
-  fillColor: '#FF9933',
-  fillOpacity: 0.04,
-  dashArray: '0',
-  interactive: false,
 };
 
 /** Custom user-location divIcon — pulsing green dot with halo. */
@@ -135,7 +116,6 @@ export default function RealMap({
   const lat = location?.lat ?? 20.5937;
   const lon = location?.lon ?? 78.9629;
   const hasGps = location?.lat != null && location?.lon != null;
-  const isIndia = (countryCode || '').toUpperCase() === 'IN';
 
   const userIcon = useMemo(() => buildUserIcon(gpsLost), [gpsLost]);
   const serviceMarkers = useMemo(
@@ -168,16 +148,6 @@ export default function RealMap({
           subdomains="abcd"
           maxZoom={20}
         />
-
-        {/* Government of India official boundary — drawn on top of OSM tiles
-            when the user is in India. Includes full J&K, Aksai Chin, Ladakh. */}
-        {isIndia && (
-          <GeoJSON
-            key="india-boundary"
-            data={indiaBoundary}
-            style={() => INDIA_BOUNDARY_STYLE}
-          />
-        )}
 
         <MapRecenter lat={lat} lon={lon} zoom={hasGps ? zoom : 4} />
 
