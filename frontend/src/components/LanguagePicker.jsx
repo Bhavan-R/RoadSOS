@@ -1,42 +1,23 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LOCALES, changeLanguage, suggestLanguageForCountry } from '../i18n';
+import { LOCALES, changeLanguage } from '../i18n';
 
 /**
  * First-launch language picker.
  *
  * Renders as a full-screen modal that gates the rest of the app until the
- * user picks a language. If we already know the country (from GPS / reverse
- * geocode), we pre-select the country's most-spoken language — the user can
- * still override before tapping Continue.
+ * user picks a language. All languages are displayed without pre-selection,
+ * requiring manual user selection.
  *
  * Languages are grouped: India (22 Schedule-VIII languages) vs World.
  */
-export default function LanguagePicker({ onConfirm, countryCode }) {
+export default function LanguagePicker({ onConfirm }) {
   const { t, i18n } = useTranslation();
 
-  // Initial selection: prior session > country hint > current i18n lang > 'en'
-  const suggested = useMemo(
-    () => suggestLanguageForCountry(countryCode),
-    [countryCode],
-  );
-  const [selected, setSelected] = useState(
-    () => suggested || i18n.language || 'en',
-  );
-
-  // If country resolves after initial mount, gently update the suggestion
-  // (but only if the user hasn't manually clicked anything yet — we detect
-  // that by comparing against the suggestion-derived initial).
-  const [userTouched, setUserTouched] = useState(false);
-  useEffect(() => {
-    if (!userTouched && suggested && suggested !== selected) {
-      setSelected(suggested);
-      changeLanguage(suggested);
-    }
-  }, [suggested]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Initial selection: current i18n language or 'en'
+  const [selected, setSelected] = useState(() => i18n.language || 'en');
 
   const handlePick = (code) => {
-    setUserTouched(true);
     setSelected(code);
     // Live preview — change language immediately so the Continue button
     // updates in the chosen language before the user taps it.

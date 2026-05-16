@@ -157,14 +157,5 @@ export function hasUserChosenLanguage() {
   try { return !!localStorage.getItem(LS_KEY); } catch { return false; }
 }
 
-/**
- * Resolve the best default language for a GPS-derived country code.
- * Returns null if we cannot determine a sensible default.
- */
-export function suggestLanguageForCountry(countryCode) {
-  const code = languageForCountry(countryCode);
-  return code && resources[code] ? code : null;
-}
-
 export { LOCALES };
 export default i18n;
