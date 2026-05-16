@@ -24,7 +24,6 @@ import DispatchScreen from './components/DispatchScreen';
 import { requestMotionPermission } from './hooks/useLocation';
 import { DEMO_MODE } from './utils/demoMode';
 import { startBackendWarmup } from './utils/backendWarmup';
-import { buildBundledSearchResult, BUNDLED_FACILITY_COUNT } from './utils/bundledFacilities';
 
 // ─── Demo location picker ─────────────────────────────────────────────────────
 const DEMO_LOCATIONS = [
