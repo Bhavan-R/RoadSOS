@@ -297,6 +297,7 @@ export default function App() {
       {/* ── First-launch language picker (gates Medical ID) ── */}
       {langPickerOpen && (
         <LanguagePicker
+          countryCode={countryCode}
           onConfirm={() => {
             setLangPickerOpen(false);
             // After language chosen, open Medical ID on first launch

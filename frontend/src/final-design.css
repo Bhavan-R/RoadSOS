@@ -2063,3 +2063,16 @@
   .lang-picker-grid { grid-template-columns: 1fr; }
   .lang-picker-native { font-size: 16px; }
 }
+
+/* Region-group titles inside the language picker */
+.lang-picker-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 6px 0 -4px 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
