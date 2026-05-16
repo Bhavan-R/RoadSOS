@@ -14,7 +14,6 @@ Cap    : 500 concurrent sessions; oldest evicted when full.
 import secrets
 import time
 from html import escape
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -49,13 +48,13 @@ def _evict_oldest() -> None:
 class TrackCreate(BaseModel):
     lat:      float           = Field(..., ge=-90,  le=90)
     lon:      float           = Field(..., ge=-180, le=180)
-    landmark: Optional[str]   = Field(None, max_length=200)
+    landmark: str | None   = Field(None, max_length=200)
 
 
 class TrackUpdate(BaseModel):
     lat:      float           = Field(..., ge=-90,  le=90)
     lon:      float           = Field(..., ge=-180, le=180)
-    landmark: Optional[str]   = Field(None, max_length=200)
+    landmark: str | None   = Field(None, max_length=200)
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
