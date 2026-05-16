@@ -1,21 +1,26 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { WifiOff, ChevronDown, AlertTriangle } from 'lucide-react';
 import { useLocation } from './hooks/useLocation';
 import { useNetwork } from './hooks/useNetwork';
 import { searchNearby } from './utils/overpass';
 import { triageContacts } from './utils/googlePlaces';
 import { saveSearchResult, loadSearchResult } from './utils/offlineDB';
 import { getEmergencyNumbers } from './utils/emergencyNumbers';
+import { hasMedicalId } from './utils/medicalId';
+import { autoFireSos } from './utils/sosDispatch';
+import { buildBundledSearchResult, BUNDLED_FACILITY_COUNT } from './utils/bundledFacilities';
 
 import CountryEmergency from './components/CountryEmergency';
 import ContactList from './components/ContactList';
 import SOSButton from './components/SOSButton';
 import TriageModal from './components/TriageModal';
-import OfflineBanner from './components/OfflineBanner';
 import CrashAlert from './components/CrashAlert';
+// LocationCard.jsx exists but is unused — MapHero handles location display
+import OfflineBanner from './components/OfflineBanner';
 import RoutePlanner from './components/RoutePlanner';
 import MedicalIdModal from './components/MedicalIdModal';
-import { hasMedicalId } from './utils/medicalId';
-import { autoFireSos } from './utils/sosDispatch';
+import MapHero from './components/MapHero';
+import DispatchScreen from './components/DispatchScreen';
 import { requestMotionPermission } from './hooks/useLocation';
 import { DEMO_MODE } from './utils/demoMode';
 import { startBackendWarmup } from './utils/backendWarmup';
@@ -23,12 +28,12 @@ import { buildBundledSearchResult, BUNDLED_FACILITY_COUNT } from './utils/bundle
 
 // ─── Demo location picker ─────────────────────────────────────────────────────
 const DEMO_LOCATIONS = [
-  { label: '📍 Use my GPS', lat: null, lon: null, country: null },
-  { label: '🇮🇳 Bengaluru, India', lat: 12.9716, lon: 77.5946, country: 'IN' },
-  { label: '🇮🇳 Mumbai, India', lat: 19.0760, lon: 72.8777, country: 'IN' },
-  { label: '🇬🇧 London, UK', lat: 51.5074, lon: -0.1278, country: 'GB' },
-  { label: '🇯🇵 Tokyo, Japan', lat: 35.6762, lon: 139.6503, country: 'JP' },
-  { label: '🇩🇪 Berlin, Germany', lat: 52.5200, lon: 13.4050, country: 'DE' },
+  { label: 'GPS', lat: null, lon: null, country: null },
+  { label: 'BLR', lat: 12.9716, lon: 77.5946, country: 'IN' },
+  { label: 'MUM', lat: 19.0760, lon: 72.8777, country: 'IN' },
+  { label: 'LON', lat: 51.5074, lon: -0.1278, country: 'GB' },
+  { label: 'TYO', lat: 35.6762, lon: 139.6503, country: 'JP' },
+  { label: 'BER', lat: 52.5200, lon: 13.4050, country: 'DE' },
 ];
 
 // ─── Mock contacts (used as fallback when backend is unreachable) ─────────────
@@ -83,6 +88,26 @@ const MOCK_CONTACTS = [
     isOpen: false,
     aiReason: null,
   },
+  {
+    id: 'mock-6',
+    name: 'City Motors Showroom',
+    category: 'showroom',
+    phone: '9876543210',
+    distance: 2.1,
+    source: 'Google Places',
+    isOpen: true,
+    aiReason: null,
+  },
+  {
+    id: 'mock-7',
+    name: 'QuickFix Puncture Shop',
+    category: 'tyre',
+    phone: '9988776655',
+    distance: 0.8,
+    source: 'OpenStreetMap',
+    isOpen: true,
+    aiReason: null,
+  },
 ];
 
 const MOCK_DATA = {
@@ -92,6 +117,8 @@ const MOCK_DATA = {
   source: 'Mock data',
   count: MOCK_CONTACTS.length,
 };
+
+export const CATS = ["All", "Hospital", "Police", "Repair", "Towing", "Fire", "Showroom", "Puncture"];
 
 // ─── First-launch detection ───────────────────────────────────────────────────
 const ONBOARDED_KEY = 'roadsos_onboarded_v1';
@@ -104,22 +131,16 @@ function markOnboarded() {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  // Demo location picker index — only meaningful when DEMO_MODE is true.
-  // In production DEMO_MODE === false and demoIdx stays 0 forever, so
-  // activeLocation always falls through to real GPS. The select is hidden.
   const [demoIdx, setDemoIdx] = useState(0);
-
-  // Crash alert
   const [crashOpen, setCrashOpen] = useState(false);
-
-  // Trip planner modal
+  const [cat, setCat] = useState("All");
   const [routePlannerOpen, setRoutePlannerOpen] = useState(false);
-
-  // Medical ID modal — auto-open on very first app launch
   const [medicalOpen, setMedicalOpen] = useState(() => isFirstLaunch());
   const [medicalIdConfigured, setMedicalIdConfigured] = useState(() => hasMedicalId());
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [dispatchedAt, setDispatchedAt] = useState(null);
+  const [dispatchContext, setDispatchContext] = useState({ isCrash: false, reason: null });
 
-  // GPS hook
   const {
     location: gpsLocation,
     error: gpsError,
@@ -128,40 +149,46 @@ export default function App() {
 
   const isOnline = useNetwork();
 
-  // Wake up the Render backend immediately on app load to avoid 30-60s
-  // cold-start delays during a judging demo.
+  // Wake up the Render backend immediately on app load
   useEffect(() => {
     startBackendWarmup();
   }, []);
 
-  // ── Active location: demo override OR real GPS ──────────────────────────
+  // Listen for SOS dispatch events to open the dispatch screen
+  useEffect(() => {
+    const onDispatch = (e) => {
+      setDispatchedAt(Date.now());
+      setDispatchContext({
+        isCrash: e.detail?.isCrash || false,
+        reason: e.detail?.reason || null
+      });
+      setDispatchOpen(true);
+    };
+    window.addEventListener('roadsos:sos-sent', onDispatch);
+    return () => window.removeEventListener('roadsos:sos-sent', onDispatch);
+  }, []);
+
   const activeLocation = useMemo(() => {
     const demo = DEMO_LOCATIONS[demoIdx];
     if (demo.lat != null) {
       return { lat: demo.lat, lon: demo.lon, country_code: demo.country, source: 'demo' };
     }
-    return gpsLocation; // may be null while GPS is loading
+    return gpsLocation;
   }, [demoIdx, gpsLocation]);
 
-  // ── Search state ───────────────────────────────────────────────────────
   const [searchData, setSearchData] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [cachedAt, setCachedAt] = useState(null);
 
-  // ── Triage state ───────────────────────────────────────────────────────
   const [triageOpen, setTriageOpen] = useState(false);
   const [triageLoading, setTriageLoading] = useState(false);
-  const [triaged, setTriaged] = useState(false);      // contacts were reordered
-  const [triageOffline, setTriageOffline] = useState(false); // used offline fallback
+  const [triaged, setTriaged] = useState(false);
+  const [triageOffline, setTriageOffline] = useState(false);
 
-  // Use precise coordinates — the 50 m distance gate in useLocation already
-  // prevents jitter-induced re-renders. Sending precise lat/lon gives the
-  // backend the best chance of finding real nearby services.
   const searchLat = activeLocation?.lat ?? null;
   const searchLon = activeLocation?.lon ?? null;
 
-  // ── Run search whenever the location changes ────────────────────
   useEffect(() => {
     if (searchLat == null || searchLon == null) return;
 
@@ -172,8 +199,6 @@ export default function App() {
     setTriaged(false);
     setTriageOffline(false);
 
-    // Hard 30-second timeout so a cold Render backend never leaves the
-    // spinner stuck forever. (Backend itself retries Overpass up to ~21 s.)
     const controller = new AbortController();
     const hardTimeout = setTimeout(() => controller.abort(), 30_000);
 
@@ -186,22 +211,12 @@ export default function App() {
       } catch (err) {
         if (cancelled) return;
 
-        // ─── Offline fallback chain ──────────────────────────────────────
-        // 1. localStorage cache (seeded by previous live searches OR by
-        //    the trip planner pre-fetching highway waypoints).
-        // 2. Bundled directory of verified Indian trauma centres + police.
-        //    Useful in deep dead zones with no prior cache.
-        // 3. MOCK_DATA — guaranteed-non-empty UI for demos and testing.
-
         const cached = loadSearchResult(searchLat, searchLon);
         if (cached) {
           setSearchData(cached);
           setCachedAt(cached.cachedAt);
         } else {
-          const bundled = buildBundledSearchResult(searchLat, searchLon, {
-            maxKm: 80,
-            limit: 8,
-          });
+          const bundled = buildBundledSearchResult(searchLat, searchLon, { maxKm: 80, limit: 8 });
           if (bundled) {
             console.info('[RoadSOS] Live + cache miss — serving bundled directory');
             setSearchData(bundled);
@@ -211,9 +226,13 @@ export default function App() {
                 : 'You are offline — showing pre-loaded directory.'
             );
           } else {
-            // Final fallback so the UI is never empty during a demo.
             console.warn('[RoadSOS] Backend + cache + bundle all empty — using mock data:', err.message);
-            setSearchData(MOCK_DATA);
+            // Don't overwrite the user's real-location landmark / country with mock ones.
+            setSearchData({
+              ...MOCK_DATA,
+              landmark: null,
+              country_code: activeLocation?.country_code || MOCK_DATA.country_code,
+            });
             setSearchError(
               isOnline
                 ? 'Could not reach server — showing demo data.'
@@ -230,7 +249,8 @@ export default function App() {
     return () => { cancelled = true; controller.abort(); clearTimeout(hardTimeout); };
   }, [searchLat, searchLon]);
 
-  // ── Triage submit ──────────────────────────────────────────────────────
+  const countryCode = searchData?.country_code || activeLocation?.country_code || 'IN';
+
   const handleTriage = useCallback(async ({ injured, blocking }) => {
     if (!searchData?.contacts?.length) return;
     setTriageLoading(true);
@@ -240,12 +260,11 @@ export default function App() {
       setSearchData(prev => ({ ...prev, contacts: result.contacts, reason: result.reason }));
       setTriaged(true);
       setTriageOffline(result._offline === true);
-
-      // Auto-send SOS to emergency contacts when the user confirms a real
-      // emergency (injured OR blocking traffic). This fires alongside the
-      // triage re-ordering so contacts are notified without an extra step.
       if (injured || blocking) {
         autoFireSos(activeLocation, searchData?.landmark, countryCode);
+        window.dispatchEvent(new CustomEvent('roadsos:sos-sent', {
+          detail: { isCrash: true, reason: result.reason }
+        }));
       }
     } catch {
       // Should never reach here, but defensive just in case
@@ -255,172 +274,216 @@ export default function App() {
     }
   }, [searchData, activeLocation, countryCode]);
 
-  // ── Derived values ─────────────────────────────────────────────────────
-  const countryCode = searchData?.country_code || activeLocation?.country_code || 'IN';
   const numbers = getEmergencyNumbers(countryCode);
   const topContact = searchData?.contacts?.[0];
 
-  // ── iOS motion permission ──────────────────────────────────────────────
   const handleMotionPermissionOnce = useCallback(() => {
     requestMotionPermission();
   }, []);
 
-  // ── Render ─────────────────────────────────────────────────────────────
-  return (
-    <div className="app">
+  const countryName = numbers?.country || 'India';
 
-      {/* ── Sticky header ── */}
-      <header className="app__header">
-        <div className="app__brand">
-          <span className="app__logo">🚨</span>
-          <span className="app__title">RoadSOS</span>
-          {DEMO_MODE && <span className="demo-badge" title="Calls are simulated. Add ?demo=0 to enable real dialing.">🧪 DEMO</span>}
-        </div>
-        <div className="app__header-actions">
-          <button
-            type="button"
-            className="plan-trip-btn"
-            onClick={() => setRoutePlannerOpen(true)}
-            title={`Pre-cache emergency contacts along your route (${BUNDLED_FACILITY_COUNT} facilities also bundled offline)`}
-            id="plan-trip-btn"
-          >
-            🗺 Plan Trip
-          </button>
-          <button
-            type="button"
-            className={`medical-id-btn ${medicalIdConfigured ? 'medical-id-btn--set' : ''}`}
-            onClick={() => setMedicalOpen(true)}
-            title={medicalIdConfigured
-              ? 'View / edit your Medical ID — shown to first responders'
-              : 'Set up your Medical ID so paramedics know your blood type and allergies'}
-            id="medical-id-btn"
-          >
-            🆔 Medical ID{!medicalIdConfigured ? ' ●' : ''}
-          </button>
-          {DEMO_MODE && (
-            <>
-              <button
-                type="button"
-                className="test-crash-btn"
-                onClick={() => setCrashOpen(true)}
-                title="Manually trigger the crash alert for demonstration"
-              >
-                🧪 Test Crash
-              </button>
-              <select
-                className="demo-picker"
-                value={demoIdx}
-                onChange={(e) => setDemoIdx(Number(e.target.value))}
-                aria-label="Demo location"
-                id="demo-location-picker"
-              >
-                {DEMO_LOCATIONS.map((d, i) => (
-                  <option key={i} value={i}>{d.label}</option>
-                ))}
-              </select>
-            </>
-          )}
+  // GPS lost detection — use cached location flag when no live GPS
+  const gpsLost = !activeLocation?.lat && !!gpsError;
+
+  return (
+    <div className="app has-map-hero">
+
+      {/* ── Map-anchored Hero (replaces old telemetry header + SOS section) ── */}
+      <MapHero
+        location={activeLocation}
+        landmark={searchData?.landmark}
+        countryCode={countryCode}
+        contacts={searchData?.contacts || []}
+        topContact={topContact}
+        isOnline={isOnline}
+        gpsLost={gpsLost}
+        onFirstTap={handleMotionPermissionOnce}
+        onPlanTrip={() => setRoutePlannerOpen(true)}
+        onMedicalId={() => setMedicalOpen(true)}
+        medicalIdConfigured={medicalIdConfigured}
+        onTestCrash={() => setCrashOpen(true)}
+        demoMode={DEMO_MODE}
+      />
+
+      {/* ── (Legacy) Sticky Telemetry Header — kept hidden by CSS .has-map-hero override ── */}
+      <header className="telemetry-header">
+        <div className="telemetry-block">
+          <div className="telemetry-glow" />
+          <div className="telemetry-content">
+            {/* Top Section */}
+            <div className="telemetry-top">
+              <div className="telemetry-brand">
+                <svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+                  <path d="M24 4L6 10V22C6 31.3 13.7 40 24 44C34.3 40 42 31.3 42 22V10L24 4Z" fill="#3b82f6" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round"/>
+                  <path d="M10 26 H 18 L 22 14 L 26 36 L 30 26 H 38" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <div style={{ fontSize: '22px', fontWeight: 900, letterSpacing: '-0.05em', display: 'flex', alignItems: 'center' }}>
+                  <span style={{ color: '#f8fafc' }}>Road</span>
+                  <span style={{ color: '#3b82f6' }}>SOS</span>
+                </div>
+                {DEMO_MODE && <span className="demo-badge" style={{ marginLeft: 4 }}>🧪 DEMO</span>}
+              </div>
+              
+              <div className="telemetry-status">
+                <div className="header-actions" style={{ marginRight: 6 }}>
+                  <button className="plan-trip-btn" onClick={() => setRoutePlannerOpen(true)} title={`Pre-cache emergency contacts along your route (${BUNDLED_FACILITY_COUNT} facilities bundled offline)`}>
+                    🗺 Plan Trip
+                  </button>
+                  <button
+                    className={`medical-id-btn ${medicalIdConfigured ? 'medical-id-btn--set' : ''}`}
+                    onClick={() => setMedicalOpen(true)}
+                    title={medicalIdConfigured ? 'View / edit your Medical ID' : 'Set up your Medical ID'}
+                  >
+                    🆔 ID{!medicalIdConfigured ? ' ●' : ''}
+                  </button>
+                  {DEMO_MODE && (
+                    <button className="test-crash-btn" onClick={() => setCrashOpen(true)} title="Test crash alert">
+                      <AlertTriangle size={12} strokeWidth={2.5} style={{ marginRight: 4 }} />
+                      TEST CRASH
+                    </button>
+                  )}
+                </div>
+
+                <div className="telemetry-ping-container">
+                  <span className={`telemetry-ping ${!isOnline ? 'offline' : ''}`} />
+                  <span className={`telemetry-ping-dot ${!isOnline ? 'offline' : ''}`} />
+                </div>
+                {DEMO_MODE ? (
+                  <div className="gps-dropdown-wrapper">
+                    <span className="telemetry-status-text">
+                      {isOnline ? (demoIdx === 0 ? 'MY GPS ACTIVE' : DEMO_LOCATIONS[demoIdx].label) : 'OFFLINE MODE'}
+                    </span>
+                    <ChevronDown size={12} color="#9ca3af" />
+                    <select className="gps-dropdown-select" value={demoIdx} onChange={(e) => setDemoIdx(Number(e.target.value))}>
+                      <option disabled>📍 GPS</option>
+                      {DEMO_LOCATIONS.map((d, i) => <option key={i} value={i}>{d.label}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <span className="telemetry-status-text">
+                    {isOnline ? 'MY GPS ACTIVE' : 'OFFLINE MODE'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Section: Location */}
+            <div className="telemetry-bottom">
+              <div className="telemetry-icon">
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <div className="telemetry-details">
+                <p className="telemetry-address">
+                  {(searchLoading && !searchData) ? 'Connecting to GPS...' : (searchData?.landmark || 'Finding nearest landmark...')}
+                </p>
+                <p className="telemetry-coords">
+                  {activeLocation ? `Lat: ${activeLocation.lat.toFixed(4)} • Lon: ${activeLocation.lon.toFixed(4)}` : 'Waiting for signal...'}
+                  {` • ${countryName}`}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* ── Offline banner (self-contained, uses useNetwork internally) ── */}
       <OfflineBanner />
 
-      {/* ── Country emergency numbers — always visible ── */}
+      {/* ── GPS error strip ── */}
+      {gpsError && demoIdx === 0 && !activeLocation && (
+        <div className="status-strip status-strip--error" style={{ marginTop: 20 }}>
+          {gpsError} — using national numbers below.
+        </div>
+      )}
+
+      {/* ── National Emergency ── */}
+      <div className="sec-head">
+        <span className="sec-title">Emergency Numbers</span>
+        <span className="sec-note">Always offline</span>
+      </div>
       <CountryEmergency numbers={numbers} />
 
-      {/* ── Main content ── */}
-      <main className="app__main">
+      {/* ── Nearby Services ── */}
+      <div id="nearby-services" className="sec-head" style={{ paddingTop: 22 }}>
+        <span className="sec-title">Nearby Services</span>
+        <span className="sec-note">
+          {searchLoading ? 'Searching...' : `${searchData?.count ?? searchData?.contacts?.length ?? 0} found`}
+          {triaged && (triageOffline ? ' ⚡ Prioritised' : ' ✨ AI')}
+        </span>
+      </div>
 
-        {/* GPS status strip */}
-        {gpsLoading && demoIdx === 0 && (
-          <div className="status-strip">
-            📡 Detecting your location…
-          </div>
-        )}
-        {gpsError && demoIdx === 0 && !activeLocation && (
-          <div className="status-strip status-strip--error">
-            {gpsError} — using national numbers above.
-          </div>
-        )}
+      {/* Manual triage trigger — opt-in, not auto-open on every search */}
+      {searchData?.contacts?.length > 0 && !triaged && (
+        <button
+          type="button"
+          className="triage-trigger-btn"
+          onClick={() => setTriageOpen(true)}
+          id="open-triage-btn"
+          title="Tell us if anyone is injured or the vehicle is blocking traffic — we'll reorder by priority"
+        >
+          🤖 Prioritise for my situation
+        </button>
+      )}
+      {triaged && (
+        <button
+          type="button"
+          className="triage-trigger-btn triage-trigger-btn--redo"
+          onClick={() => setTriageOpen(true)}
+        >
+          🔄 Re-prioritise
+        </button>
+      )}
 
-        {/* Landmark */}
-        {searchData?.landmark && (
-          <div className="landmark">
-            📍 {searchData.landmark}
-          </div>
-        )}
-
-        {/* Section label */}
-        <div className="section-divider">
-          <span className="section-divider__label">
-            Nearby services — hospitals · police · ambulance · towing · repair
-          </span>
-        </div>
-
-        {/* Manual triage trigger — opt-in, not auto-open on every search */}
-        {searchData?.contacts?.length > 0 && !triaged && (
-          <button
-            type="button"
-            className="triage-trigger-btn"
-            onClick={() => setTriageOpen(true)}
-            id="open-triage-btn"
-            title="Tell us if anyone is injured or the vehicle is blocking traffic — we'll reorder the list by priority"
-          >
-            🤖 Prioritise for my situation
-          </button>
-        )}
-        {triaged && (
-          <button
-            type="button"
-            className="triage-trigger-btn triage-trigger-btn--redo"
-            onClick={() => setTriageOpen(true)}
-          >
-            🔄 Re-prioritise
-          </button>
-        )}
-
-        {/* Contact list */}
-        <ContactList
-          contacts={searchData?.contacts}
-          loading={searchLoading}
-          error={searchError}
-          cachedAt={cachedAt}
-        />
-
-        {/* Footer note */}
-        {searchData?.source && (
-          <div className="source-note">
-            Data: {searchData.source} · {searchData.count ?? searchData.contacts?.length ?? 0} services
-            {triaged && (triageOffline ? ' · ⚡ Prioritised offline' : ' · ✨ Prioritised by AI')}
-          </div>
-        )}
-      </main>
-
-      {/* ── SOS button bar — fixed bottom ── */}
-      <SOSButton
-        location={activeLocation}
-        landmark={searchData?.landmark}
-        topContact={topContact}
-        countryCode={countryCode}
-        onFirstTap={handleMotionPermissionOnce}
+      <ContactList
+        contacts={searchData?.contacts}
+        loading={searchLoading}
+        error={searchError}
+        cachedAt={cachedAt}
+        cat={cat}
+        setCat={setCat}
       />
 
-      {/* ── Triage modal ── */}
+      {/* ── Footer Note ── */}
+      {(searchError || searchData?.source === 'Mock data') && (
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 7, padding: "14px 20px 0", opacity: 0.5 }}>
+          <WifiOff size={12} color="#334E6E" strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span style={{ fontSize: 11, color: "#1E3655", lineHeight: 1.6 }}>
+            {searchError || 'Could not reach server — showing demo data. Emergency numbers always work offline.'}
+          </span>
+        </div>
+      )}
+      {/* ── Footer Note ── */}
+
+      {/* ── Modals ── */}
       <TriageModal
         open={triageOpen && !!searchData?.contacts?.length}
         loading={triageLoading}
         onSubmit={handleTriage}
         onSkip={() => setTriageOpen(false)}
+        location={activeLocation}
+        landmark={searchData?.landmark}
+        topContact={topContact}
       />
 
-      {/* ── Route planner — pre-cache trip waypoints for offline use ── */}
+      <CrashAlert
+        open={crashOpen}
+        onConfirm={() => setCrashOpen(false)}
+        onCancel={() => setCrashOpen(false)}
+        numbers={numbers}
+        location={activeLocation}
+        landmark={searchData?.landmark}
+        countryCode={countryCode}
+      />
+
       <RoutePlanner
         open={routePlannerOpen}
         onClose={() => setRoutePlannerOpen(false)}
       />
 
-      {/* ── Emergency Medical ID — paramedic-visible health profile ── */}
       <MedicalIdModal
         open={medicalOpen}
         startInEdit={!hasMedicalId()}
@@ -431,15 +494,17 @@ export default function App() {
         }}
       />
 
-      {/* ── Crash alert (velocity collapse detection) ── */}
-      <CrashAlert
-        open={crashOpen}
-        onConfirm={() => setCrashOpen(false)}
-        onCancel={() => setCrashOpen(false)}
-        numbers={numbers}
+      {/* ── Full-screen Dispatch Glass overlay (after SOS sent) ── */}
+      <DispatchScreen
+        open={dispatchOpen}
+        onClose={() => setDispatchOpen(false)}
         location={activeLocation}
         landmark={searchData?.landmark}
-        countryCode={countryCode}
+        contacts={searchData?.contacts || []}
+        topContact={topContact}
+        dispatchedAt={dispatchedAt}
+        isCrash={dispatchContext.isCrash}
+        triageReason={dispatchContext.reason}
       />
     </div>
   );

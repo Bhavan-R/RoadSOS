@@ -1,113 +1,109 @@
 import React from 'react';
+import { Hospital, Shield, Ambulance, Truck, Wrench, Cog, Car, PhoneCall, Navigation, Zap } from 'lucide-react';
 import { guardedTelDial } from '../utils/demoMode';
 
-const CATEGORY_LABELS = {
-  hospital:  '🏥 Hospital',
-  police:    '👮 Police',
-  ambulance: '🚑 Ambulance',
-  towing:    '🚛 Towing',
-  repair:    '🔧 Repair',
-  tyre:      '🛞 Tyre',
-  showroom:  '🚗 Showroom',
+const CATEGORY_CONFIG = {
+  hospital:  { Icon: Hospital,  dot: '#DC2626' },
+  police:    { Icon: Shield,    dot: '#1D4ED8' },
+  ambulance: { Icon: Ambulance, dot: '#DC2626' },
+  towing:    { Icon: Truck,     dot: '#0F766E' },
+  repair:    { Icon: Wrench,    dot: '#0F766E' },
+  tyre:      { Icon: Cog,       dot: '#6366F1' },
+  showroom:  { Icon: Car,       dot: '#10B981' },
 };
 
-const CATEGORY_ICONS = {
-  hospital:  '🏥',
-  police:    '👮',
-  ambulance: '🚑',
-  towing:    '🚛',
-  repair:    '🔧',
-  tyre:      '🛞',
-  showroom:  '🚗',
-};
+export default function ContactCard({ contact, isLast }) {
+  const { name, category, distance, phone, isOpen, aiReason, lat, lon } = contact;
 
-export default function ContactCard({ contact, isTop }) {
-  const { name, category, distance, phone, source, isOpen, aiReason, lat, lon } = contact;
-
-  // Normalise phone: strip spaces for the href, keep formatted for display
   const phoneClean = phone ? phone.replace(/\s+/g, '') : null;
   const callHref   = phoneClean ? `tel:${phoneClean}` : null;
 
-  // Google Maps directions URL — uses the "dir" endpoint so Maps prompts
-  // the user's current location as the origin and the contact as the
-  // destination. The query name is included so the pin shows the place
-  // name even when the lat/lon resolves to a slightly different polygon.
   const mapsHref = (typeof lat === 'number' && typeof lon === 'number')
     ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&destination_place_id=${encodeURIComponent(name || '')}`
     : null;
 
   const cat = (category || 'repair').toLowerCase();
+  const config = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.repair;
+  const { Icon, dot } = config;
+
+  const kmValue = typeof distance === 'number' ? distance.toFixed(1) : '—';
+
+  // Determine status for left border color (green=reachable, amber=open but far, slate=closed)
+  let statusAttr = 'reachable';
+  if (isOpen === false) statusAttr = 'closed';
+  else if (typeof distance === 'number' && distance >= 4) statusAttr = 'far';
 
   return (
-    <div className={`contact-card ${isTop ? 'contact-card--top' : ''}`}>
-      {/* AI Priority banner — only on top card */}
+    <div className="svc-card" data-km={kmValue} data-status={statusAttr}>
       {aiReason && (
-        <div className="contact-card__ai-reason">
-          <span className="ai-icon">⚡</span>
-          <span>
-            <strong>AI Priority:</strong> {aiReason}
-          </span>
+        <div className="svc-ai">
+          <Zap size={13} fill="currentColor" />
+          <span>{aiReason}</span>
         </div>
       )}
 
-      {/* Header row: badge + open/closed status */}
-      <div className="contact-card__header">
-        <span className={`category-badge category-badge--${cat}`}>
-          {CATEGORY_LABELS[cat] || category}
-        </span>
-        <span className="contact-card__status">
-          {isOpen === true  && <span className="status status--open">● Open</span>}
-          {isOpen === false && <span className="status status--closed">● Closed</span>}
-        </span>
+      {/* Name row */}
+      <div className="svc-main">
+        <div className="svc-icon" style={{ background: dot + '18' }}>
+          <Icon size={17} color={dot} strokeWidth={2} />
+        </div>
+        <div className="svc-info">
+          <div className="svc-name">{name}</div>
+          <div className="svc-status-row">
+            {isOpen === true && (
+              <>
+                <div className="open-dot" style={{ background: '#22C55E' }} />
+                <span className="open-label">Open</span>
+              </>
+            )}
+            {isOpen === false && (
+              <>
+                <div className="closed-dot" style={{ background: '#EF4444' }} />
+                <span className="closed-label">Closed</span>
+              </>
+            )}
+            {isOpen === null && (
+              <span className="svc-dist" style={{ fontSize: 10 }}>Status unknown</span>
+            )}
+            <span style={{ color: '#CBD5E1' }}>·</span>
+            <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, fontSize: 10 }}>{cat}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Name */}
-      <h3 className="contact-card__name">{name}</h3>
-
-      {/* Distance + source */}
-      <div className="contact-card__meta">
-        <span className="contact-card__distance">
-          📍 {typeof distance === 'number' ? `${distance.toFixed(1)} km away` : 'Distance unknown'}
-        </span>
-        {phone && (
-          <span className="contact-card__phone">{phone}</span>
+      {/* Call + Directions row */}
+      <div className="call-row">
+        {callHref ? (
+          <a
+            href={callHref}
+            className="call-btn"
+            id={`call-btn-${phoneClean}`}
+            aria-label={`Call ${name} at ${phone}`}
+            onClick={(e) => guardedTelDial(e, phoneClean, name)}
+          >
+            <PhoneCall size={13} className="call-btn-icon" strokeWidth={2.4} fill="#fff" />
+            <span className="call-btn-num">{phone}</span>
+          </a>
+        ) : (
+          <div className="call-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+            <PhoneCall size={13} strokeWidth={2.4} />
+            <span className="call-btn-num">No phone</span>
+          </div>
         )}
-      </div>
 
-      {/* Big call button */}
-      {callHref ? (
-        <a
-          href={callHref}
-          className="call-button"
-          id={`call-btn-${phoneClean}`}
-          role="button"
-          aria-label={`Call ${name} at ${phone}`}
-          onClick={(e) => guardedTelDial(e, phoneClean, name)}
-        >
-          <span aria-hidden="true">📞</span> Call {phone}
-        </a>
-      ) : (
-        <div className="call-button call-button--disabled">
-          No phone number listed
-        </div>
-      )}
-
-      {/* Open in Google Maps — directions from current location */}
-      {mapsHref && (
-        <a
-          href={mapsHref}
-          className="maps-link"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Open directions to ${name} in Google Maps`}
-        >
-          <span aria-hidden="true">🧭</span> Open Google Maps for directions
-        </a>
-      )}
-
-      {/* Data provenance */}
-      <div className="contact-card__source">
-        via {source || 'Unknown source'}
+        {mapsHref && (
+          <a
+            href={mapsHref}
+            className="maps-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open directions to ${name} in Google Maps`}
+            style={{ flex: '0 0 auto', marginTop: 0, padding: '0 12px' }}
+          >
+            <Navigation size={13} color="#1D4ED8" strokeWidth={2.4} />
+            Directions
+          </a>
+        )}
       </div>
     </div>
   );

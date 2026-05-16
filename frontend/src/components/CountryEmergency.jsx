@@ -1,58 +1,46 @@
 import React from 'react';
+import { Ambulance, Shield, Flame, Phone } from 'lucide-react';
 import { guardedTelDial } from '../utils/demoMode';
 
-/**
- * CountryEmergency — always-visible banner at top of screen.
- *
- * Props: { country, police, ambulance, fire, general }
- * Each value is a dial string (e.g. "108", "100").
- */
-
-const BUTTONS = [
-  { key: 'ambulance', icon: '🚑', label: 'Ambulance', colorClass: 'ce-btn--ambulance' },
-  { key: 'police',    icon: '👮', label: 'Police',    colorClass: 'ce-btn--police'    },
-  { key: 'fire',      icon: '🔥', label: 'Fire',      colorClass: 'ce-btn--fire'      },
-  { key: 'general',   icon: '📟', label: 'General',   colorClass: 'ce-btn--general'   },
+const EMERGENCY_CONFIG = [
+  { key: 'ambulance', label: 'Ambulance', short: 'AMB', Icon: Ambulance, color: '#DC2626' },
+  { key: 'police',    label: 'Police',    short: 'POL', Icon: Shield,    color: '#1D4ED8' },
+  { key: 'fire',      label: 'Fire',      short: 'FIR', Icon: Flame,     color: '#F59E0B' },
+  { key: 'general',   label: 'Disaster',  short: 'DIS', Icon: Phone,     color: '#22C55E' },
 ];
 
 export default function CountryEmergency({ numbers }) {
   if (!numbers) return null;
 
-  const { country, police, ambulance, fire, general } = numbers;
+  const { police, ambulance, fire, general } = numbers;
   const vals = { police, ambulance, fire, general };
 
   return (
-    <section className="country-emergency" aria-label="National emergency numbers">
-      {/* Header */}
-      <div className="country-emergency__header">
-        <div className="country-emergency__title-row">
-          <span className="country-emergency__call-first">🚨 CALL FIRST</span>
-          <span className="country-emergency__country">{country}</span>
-        </div>
-        <span className="country-emergency__always">Works offline · 196 countries</span>
-      </div>
+    <div className="national-grid">
+      {EMERGENCY_CONFIG.map(({ key, label, short, Icon, color }) => {
+        const num = vals[key];
+        if (!num) return null;
 
-      {/* 4-button grid */}
-      <div className="country-emergency__grid">
-        {BUTTONS.map(({ key, icon, label, colorClass }) => {
-          const num = vals[key];
-          if (!num) return null;
-          return (
-            <a
-              key={key}
-              href={`tel:${num}`}
-              className={`country-emergency__btn ${colorClass}`}
-              id={`ce-btn-${key}`}
-              aria-label={`Call ${label}: ${num}`}
-              onClick={(e) => guardedTelDial(e, num, label)}
-            >
-              <span className="country-emergency__icon">{icon}</span>
-              <span className="country-emergency__num">{num}</span>
-              <span className="country-emergency__label">{label}</span>
-            </a>
-          );
-        })}
-      </div>
-    </section>
+        return (
+          <a
+            key={key}
+            href={`tel:${num}`}
+            className="nat-card"
+            id={`ce-btn-${key}`}
+            data-num={num}
+            aria-label={`Call ${label}: ${num}`}
+            onClick={(e) => guardedTelDial(e, num, label)}
+          >
+            <div className="nat-icon" style={{ background: color + '22' }}>
+              <Icon size={20} color={color} strokeWidth={2.3} />
+            </div>
+            <div className="nat-body">
+              <div className="nat-label" data-short={short}>{label}</div>
+              <div className="nat-num">{num}</div>
+            </div>
+          </a>
+        );
+      })}
+    </div>
   );
 }

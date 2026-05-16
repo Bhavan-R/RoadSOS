@@ -1,104 +1,177 @@
 import React, { useState } from 'react';
+import { Activity, AlertTriangle, CheckCircle, XCircle, ArrowRight, Stethoscope, Car, Signal } from "lucide-react";
+import { buildSosSmsBody } from '../utils/medicalId';
+import { encodePlusCode } from '../utils/plusCodes';
+
+const QUESTIONS = [
+  {
+    id: "injured",
+    text: "Is anyone injured?",
+    Icon: Stethoscope,
+    iconColor: "#DC2626",
+    yesLabel: "Yes, injured",
+    noLabel: "No injuries",
+  },
+  {
+    id: "blocking",
+    text: "Is the vehicle blocking the road?",
+    Icon: Car,
+    iconColor: "#1D4ED8",
+    yesLabel: "Yes, blocking",
+    noLabel: "Road is clear",
+  },
+];
+
+function getSummary(ans) {
+  const { injured, blocking } = ans;
+  if (injured === undefined || blocking === undefined) return { msg: "Answer both questions to get a priority recommendation.", type: "idle" };
+  if (injured === true)
+    return { msg: "Injury reported — Ambulance (108) will be prioritised first.", type: "urgent" };
+  if (blocking === true)
+    return { msg: "Road blocked — Police (100) and Towing recommended.", type: "clear" };
+  return { msg: "No injury, road clear — Repair or Towing services suggested.", type: "clear" };
+}
 
 /**
  * TriageModal — appears on load, collects injury + blocking answers,
  * calls onSubmit({ injured, blocking }) and shows loading state.
- *
- * Props:
- *   open     {boolean}
- *   loading  {boolean}  — true while AI is prioritising
- *   onSubmit {function} — called with { injured, blocking }
- *   onSkip   {function} — user wants to skip triage
  */
-export default function TriageModal({ open, loading, onSubmit, onSkip }) {
-  const [injured,  setInjured]  = useState(null);
-  const [blocking, setBlocking] = useState(null);
+export default function TriageModal({ open, loading, onSubmit, onSkip, location, landmark, topContact }) {
+  const [ans, setAns] = useState({});
 
   if (!open) return null;
 
-  const ready = injured !== null && blocking !== null;
-
-  const handleSubmit = () => {
-    if (!ready || loading) return;
-    onSubmit({ injured, blocking });
+  const toggle = (qid, val) => {
+    if (loading) return; // prevent toggling while submitting
+    setAns(prev => ({ ...prev, [qid]: prev[qid] === val ? undefined : val }));
   };
 
-  const Choice = ({ value, current, setter, label, emoji }) => (
-    <button
-      className={`choice ${current === value ? 'choice--selected' : ''}`}
-      onClick={() => setter(value)}
-      disabled={loading}
-      aria-pressed={current === value}
-      id={`choice-${label.toLowerCase().replace(/\s+/g, '-')}`}
-    >
-      <span className="choice__emoji">{emoji}</span>
-      {label}
-    </button>
-  );
+  const allAnswered = ans.injured !== undefined && ans.blocking !== undefined;
+  const { msg, type } = getSummary(ans);
+
+  const handleSubmit = () => {
+    if (!allAnswered || loading) return;
+    onSubmit({ injured: ans.injured, blocking: ans.blocking });
+  };
+
+  const handleMiniSOS = () => {
+    if (!location?.lat || !location?.lon) {
+      alert("GPS location not available yet.");
+      return;
+    }
+    const plusCode = encodePlusCode(location.lat, location.lon);
+    const message  = buildSosSmsBody({ lat: location.lat, lon: location.lon, plusCode, landmark });
+    const encoded  = encodeURIComponent(message);
+    const win = window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    setTimeout(() => {
+      if (!win || win.closed || win.closed === undefined) {
+        window.location.href = `sms:?body=${encoded}`;
+      }
+    }, 800);
+  };
 
   return (
-    <div
-      className="modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Quick triage"
-    >
-      <div className="modal">
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Quick triage">
+      <div className="sheet">
+
+        {/* Handle */}
+        <div className="handle-bar"><div className="handle" /></div>
+
         {/* Header */}
-        <div className="modal__header-row">
-          <span className="modal__header-icon">🩺</span>
+        <div className="sheet-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <h2>Quick Triage</h2>
-            <p className="modal__subtitle">
-              Two questions · AI will prioritise the right help for your situation.
-            </p>
+            <div className="sheet-label">
+              <Activity size={13} strokeWidth={2.5} />
+              Quick Triage
+            </div>
+            <div className="sheet-title">What happened?</div>
+            <div className="sheet-sub">
+              Two questions — we will prioritise the right help for your situation.
+            </div>
           </div>
+          
+          <button 
+            onClick={handleMiniSOS}
+            className="triage-sos-btn"
+            title="Send immediate SOS"
+          >
+            SOS
+          </button>
         </div>
 
-        {/* Q1: injured? */}
-        <div className="modal__question">
-          <label className="modal__question-label">
-            Is anyone injured?
-          </label>
-          <div className="choices">
-            <Choice value={true}  current={injured} setter={setInjured}  label="Yes" emoji="🤕" />
-            <Choice value={false} current={injured} setter={setInjured}  label="No"  emoji="✅" />
-          </div>
+        {/* Questions */}
+        <div className="questions">
+          {QUESTIONS.map(({ id, text, Icon, iconColor, yesLabel, noLabel }) => (
+            <div className="question-block" key={id}>
+              <div className="question-text">
+                <div className="q-icon">
+                  <Icon size={14} color={iconColor} strokeWidth={2.2} />
+                </div>
+                {text}
+              </div>
+              <div className="choice-row">
+                <button
+                  className={`choice-btn ${ans[id] === true ? "yes-active" : "idle"}`}
+                  onClick={() => toggle(id, true)}
+                  disabled={loading}
+                  aria-pressed={ans[id] === true}
+                >
+                  {ans[id] === true
+                    ? <XCircle size={16} strokeWidth={2.2} />
+                    : <span style={{ width: 16, height: 16, border: "2px solid #CBD5E1", borderRadius: "50%", display: "inline-block" }} />
+                  }
+                  {yesLabel}
+                </button>
+                <button
+                  className={`choice-btn ${ans[id] === false ? "no-active" : "idle"}`}
+                  onClick={() => toggle(id, false)}
+                  disabled={loading}
+                  aria-pressed={ans[id] === false}
+                >
+                  {ans[id] === false
+                    ? <CheckCircle size={16} strokeWidth={2.2} />
+                    : <span style={{ width: 16, height: 16, border: "2px solid #CBD5E1", borderRadius: "50%", display: "inline-block" }} />
+                  }
+                  {noLabel}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Q2: blocking? */}
-        <div className="modal__question">
-          <label className="modal__question-label">
-            Is the vehicle blocking the road?
-          </label>
-          <div className="choices">
-            <Choice value={true}  current={blocking} setter={setBlocking} label="Yes" emoji="🚧" />
-            <Choice value={false} current={blocking} setter={setBlocking} label="No"  emoji="✅" />
-          </div>
+        {/* Summary bar */}
+        <div className="sheet-divider" />
+        <div className={`summary-bar ${type === "idle" ? "" : type}`}>
+          {type === "urgent" && <AlertTriangle size={15} strokeWidth={2} style={{ flexShrink: 0 }} />}
+          {type === "clear"  && <CheckCircle  size={15} strokeWidth={2} style={{ flexShrink: 0 }} />}
+          {msg}
         </div>
 
         {/* Actions */}
-        <div className="modal__actions">
-          <button
-            className="modal__primary"
-            id="triage-submit-btn"
+        <div className="actions">
+          <button 
+            className="get-help-btn" 
+            disabled={!allAnswered || loading}
             onClick={handleSubmit}
-            disabled={!ready || loading}
-            aria-busy={loading}
           >
-            {loading
-              ? '⏳ AI is prioritising contacts...'
-              : '🆘 Get Help'}
+            {loading ? (
+              '⏳ Prioritising...'
+            ) : (
+              <>
+                <ArrowRight size={18} strokeWidth={2.5} />
+                {allAnswered ? "Get Prioritised Help" : "Answer both questions"}
+              </>
+            )}
           </button>
-          <button
-            className="modal__secondary"
-            id="triage-skip-btn"
+          <button 
+            className="skip-btn"
             onClick={onSkip}
             disabled={loading}
           >
-            Skip · Show all contacts as-is
+            Skip — show all contacts
           </button>
         </div>
+
       </div>
     </div>
   );

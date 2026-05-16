@@ -1,60 +1,85 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ContactCard from './ContactCard';
+import { CATS } from '../App';
 
-export default function ContactList({ contacts, loading, error, cachedAt }) {
+export default function ContactList({ contacts, loading, error, cachedAt, cat, setCat }) {
+  // Memoize filtered contacts based on the selected category
+  const filtered = useMemo(() => {
+    if (!contacts) return [];
+    if (cat === "All") return contacts;
+    return contacts.filter(c => {
+      const cCat = (c.category || 'repair').toLowerCase();
+      const filterCat = cat === "Puncture" ? "tyre" : cat.toLowerCase();
+      return cCat === filterCat;
+    });
+  }, [contacts, cat]);
+
   // ── Loading state ─────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="contact-list contact-list--loading">
+      <div className="loading-box">
         <div className="spinner" aria-hidden="true" />
-        <p>Finding nearby help...</p>
-        <p className="contact-list__hint">Searching hospitals, police, ambulance &amp; more</p>
+        <div style={{ fontWeight: 500, color: '#FFFFFF' }}>Finding nearby help...</div>
+        <div style={{ fontSize: 11, marginTop: 4 }}>Searching hospitals, police &amp; more</div>
       </div>
     );
   }
 
-  // ── Error state ───────────────────────────────────────────────────────────
-  if (error) {
+  // ── Error state — only block if no fallback contacts available ───────────
+  if (error && (!contacts || contacts.length === 0)) {
     return (
-      <div className="contact-list contact-list--error" role="alert">
-        <div className="contact-list__error-icon">⚠️</div>
-        <p><strong>Could not load contacts</strong></p>
-        <p className="contact-list__error-msg">{error}</p>
-        <p className="contact-list__hint">
-          National emergency numbers above are always available offline.
-        </p>
-      </div>
-    );
-  }
-
-  // ── Empty state ───────────────────────────────────────────────────────────
-  if (!contacts || contacts.length === 0) {
-    return (
-      <div className="contact-list contact-list--empty">
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-        <p>No services found in your area.</p>
-        <p className="contact-list__hint">
-          Call the national emergency number above.
-        </p>
+      <div className="loading-box" role="alert">
+        <div style={{ fontSize: 24, marginBottom: 8 }}>⚠️</div>
+        <div style={{ fontWeight: 500, color: '#FFFFFF' }}>Could not load contacts</div>
+        <div style={{ fontSize: 11, marginTop: 4 }}>{error}</div>
       </div>
     );
   }
 
   // ── Results ───────────────────────────────────────────────────────────────
   return (
-    <div className="contact-list">
+    <>
+      {/* Category Filters */}
+      <div className="filters" style={{ marginBottom: 10 }}>
+        {CATS.map(c => (
+          <button
+            key={c}
+            className={`chip ${c === cat ? "chip-on" : "chip-off"}`}
+            onClick={() => setCat(c)}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <div className="cached-note" role="alert" style={{ background: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}>
+          ⚠️ {error}
+        </div>
+      )}
+
       {cachedAt && (
         <div className="cached-note">
           ⏱ Showing cached results from {cachedAt}
         </div>
       )}
-      {contacts.map((c, idx) => (
-        <ContactCard
-          key={c.id || `contact-${idx}`}
-          contact={c}
-          isTop={idx === 0}
-        />
-      ))}
-    </div>
+
+      {/* Service List */}
+      <div className="svc-list">
+        {(!contacts || contacts.length === 0) ? (
+          <div className="empty">No services found here. Call the national emergency number above.</div>
+        ) : filtered.length === 0 ? (
+          <div className="empty">No services found in this category</div>
+        ) : (
+          filtered.map((c, idx) => (
+            <ContactCard
+              key={c.id || `contact-${idx}`}
+              contact={c}
+              isLast={idx === filtered.length - 1}
+            />
+          ))
+        )}
+      </div>
+    </>
   );
 }
