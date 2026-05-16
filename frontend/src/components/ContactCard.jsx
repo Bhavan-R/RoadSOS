@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Hospital, Shield, Ambulance, Truck, Wrench, Cog, Car, PhoneCall, Navigation, Zap } from 'lucide-react';
 import { guardedTelDial } from '../utils/demoMode';
 
@@ -13,6 +14,7 @@ const CATEGORY_CONFIG = {
 };
 
 export default function ContactCard({ contact, isLast }) {
+  const { t } = useTranslation();
   const { name, category, distance, phone, isOpen, aiReason, lat, lon } = contact;
 
   const phoneClean = phone ? phone.replace(/\s+/g, '') : null;
@@ -53,20 +55,20 @@ export default function ContactCard({ contact, isLast }) {
             {isOpen === true && (
               <>
                 <div className="open-dot" style={{ background: '#22C55E' }} />
-                <span className="open-label">Open</span>
+                <span className="open-label">{t('card.open')}</span>
               </>
             )}
             {isOpen === false && (
               <>
                 <div className="closed-dot" style={{ background: '#EF4444' }} />
-                <span className="closed-label">Closed</span>
+                <span className="closed-label">{t('card.closed')}</span>
               </>
             )}
             {isOpen === null && (
-              <span className="svc-dist" style={{ fontSize: 10 }}>Status unknown</span>
+              <span className="svc-dist" style={{ fontSize: 10 }}>{t('card.unknown_status')}</span>
             )}
             <span style={{ color: '#CBD5E1' }}>·</span>
-            <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, fontSize: 10 }}>{cat}</span>
+            <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, fontSize: 10 }}>{t(`category.${cat}`, cat)}</span>
           </div>
         </div>
       </div>
@@ -87,7 +89,7 @@ export default function ContactCard({ contact, isLast }) {
         ) : (
           <div className="call-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
             <PhoneCall size={13} strokeWidth={2.4} />
-            <span className="call-btn-num">No phone</span>
+            <span className="call-btn-num">{t('actions.no_phone')}</span>
           </div>
         )}
 
@@ -101,7 +103,7 @@ export default function ContactCard({ contact, isLast }) {
             style={{ flex: '0 0 auto', marginTop: 0, padding: '0 12px' }}
           >
             <Navigation size={13} color="#1D4ED8" strokeWidth={2.4} />
-            Directions
+            {t('actions.directions')}
           </a>
         )}
       </div>

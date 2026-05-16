@@ -7,8 +7,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: ANTHROPIC_API_KEY
-        sync: false
+      - key: GEMINI_API_KEY
+        sync: false  # Google AI Studio key — free tier, no billing required
       - key: Mapsplatformkey
         sync: false  # Google Places API key (Render naming convention)
       - key: PYTHON_VERSION

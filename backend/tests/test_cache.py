@@ -1,7 +1,5 @@
 import asyncio
 
-import pytest
-
 from services.cache import TTLCache, location_key
 
 

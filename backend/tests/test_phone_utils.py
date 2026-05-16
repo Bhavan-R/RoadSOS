@@ -1,8 +1,8 @@
 from services.phone_utils import (
-    normalize_phone,
-    to_tel_href,
     is_dialable,
+    normalize_phone,
     phones_match,
+    to_tel_href,
 )
 
 

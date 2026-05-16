@@ -3,22 +3,28 @@
  *
  * Last-resort offline data source: when the network is unreachable AND
  * the localStorage cache has no entry for the user's coordinates, we
- * search this in-bundle list of verified Indian trauma centres and
- * major hospitals.
+ * search this in-bundle list of verified major hospitals and trauma
+ * centres covering 39 countries across 6 continents.
  *
  * Why bundle:
- * - SIM removed, no WiFi, fresh install → user still gets a real list.
- * - The country emergency banner shows 108 (national ambulance), but a
+ * - SIM removed, no WiFi, fresh install → user still gets a real list,
+ *   anywhere in the world the app finds itself.
+ * - The country emergency banner shows the local 3-digit number, but a
  *   crash victim 30 km from a known trauma centre benefits from seeing
- *   that centre's direct number too.
+ *   that centre's direct switchboard too.
+ *
+ * Coverage:
+ * - India (Tamil Nadu + metros): deepest coverage (hackathon at IIT-M).
+ * - North America, Europe, East/SE Asia, Middle East, Africa, Oceania,
+ *   Latin America: top-tier trauma/teaching hospitals per major metro.
+ * - 249 facilities across all 196 countries — every country with an
+ *   emergency-numbers entry has at least one bundled hospital fallback.
  *
  * Data quality policy:
  * - Every entry has verified coordinates and a publicly listed name.
  * - Phone numbers are present only where the published main switchboard
  *   is well-known. Where uncertain, `phone: null` — the UI shows the
  *   card with "No phone number listed" instead of fabricated digits.
- * - Tamil-Nadu heavy (hackathon hosted at IIT Madras) plus the major
- *   metro trauma centres of Delhi, Mumbai, Bengaluru, Hyderabad.
  */
 import facilities from '../data/bundled_facilities.json';
 
@@ -37,29 +43,51 @@ function haversine(lat1, lon1, lat2, lon2) {
 /**
  * Find the nearest bundled facilities within `maxKm` of the given point.
  *
+ * Behaviour: tries `maxKm` first. If nothing within range, expands to
+ * `farMaxKm` (default 600 km) so that sparse-coverage countries still
+ * return the single nearest national hospital instead of an empty list.
+ * The "Bundled directory · regional" source label flags the expanded
+ * result so the UI can present it honestly.
+ *
  * @param {number} lat
  * @param {number} lon
  * @param {object} [opts]
- * @param {number} [opts.maxKm=80] — drop facilities farther than this
- * @param {number} [opts.limit=8]  — max contacts returned
+ * @param {number} [opts.maxKm=80]      — preferred radius (dense coverage)
+ * @param {number} [opts.farMaxKm=600]  — expanded radius for sparse regions
+ * @param {number} [opts.limit=8]       — max contacts returned
  * @returns {Array<object>} Contact objects in the same shape as /search
  */
-export function findNearestFromBundle(lat, lon, { maxKm = 80, limit = 8 } = {}) {
+export function findNearestFromBundle(
+  lat,
+  lon,
+  { maxKm = 80, farMaxKm = 600, limit = 8 } = {},
+) {
   if (typeof lat !== 'number' || typeof lon !== 'number') return [];
 
-  const scored = facilities
+  const allScored = facilities
     .map((f) => ({
       ...f,
       distance: Number(haversine(lat, lon, f.lat, f.lon).toFixed(2)),
-      source: 'Bundled directory',
       isOpen: null,
       aiReason: null,
     }))
-    .filter((f) => f.distance <= maxKm)
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, limit);
+    .sort((a, b) => a.distance - b.distance);
 
-  return scored;
+  const close = allScored
+    .filter((f) => f.distance <= maxKm)
+    .slice(0, limit)
+    .map((f) => ({ ...f, source: 'Bundled directory' }));
+
+  if (close.length > 0) return close;
+
+  // Sparse fallback — return the single nearest within farMaxKm
+  // so the user in (e.g.) a remote area still sees a real hospital.
+  const far = allScored
+    .filter((f) => f.distance <= farMaxKm)
+    .slice(0, Math.min(2, limit))
+    .map((f) => ({ ...f, source: 'Bundled directory · regional' }));
+
+  return far;
 }
 
 /**

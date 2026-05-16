@@ -75,7 +75,7 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
 
     startAlarm(callNumber);
     startCountdown(CHOOSE_SECONDS, () => triggerAutomatic());
-  }, [open]);                                    // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function dispatchSos() {
     const links = buildSosLinks(location, landmark);
@@ -95,17 +95,33 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
     setSeconds(from);
     intervalRef.current = setInterval(() => {
       setSeconds(s => {
-        if (s <= 1) {
-          clearInterval(intervalRef.current);
-          onZero();
-          return 0;
-        }
+        if (s <= 1) { clearInterval(intervalRef.current); onZero(); return 0; }
         return s - 1;
       });
     }, 1000);
   }
 
-  // ─── Mode: AUTOMATING ─────────────────────────────────────────────────
+  // ─── Auto-send SOS to emergency contacts ──────────────────────────────
+  // Called from both fireCall() and triggerManualWithSos().
+  // WA countries  → window.open(wa.me) — opens WhatsApp without navigating away,
+  //                 so the ambulance dial setTimeout still fires.
+  // SMS countries → window.location.href (group SMS to all) — navigates briefly
+  //                 to SMS app; dial fires when user returns, or they can call
+  //                 from the CALLING screen manually.
+  function dispatchSos() {
+    const links = buildSosLinks(location, landmark);
+    if (!links) return;
+
+    if (preferWA) {
+      window.open(links.perContact[0].waHref, '_blank');
+      setSosSent({ channel: 'wa', links });
+    } else {
+      window.location.href = links.groupSmsHref;
+      setSosSent({ channel: 'sms', links });
+    }
+  }
+
+  // ─── AUTOMATING phase ─────────────────────────────────────────────────
   function triggerAutomatic() {
     stopAlarm();
     setPhase(PHASE.AUTOMATING);
@@ -122,7 +138,7 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
     onConfirm?.();
   }
 
-  // ─── Mode: MANUAL ─────────────────────────────────────────────────────
+  // ─── MANUAL phase ─────────────────────────────────────────────────────
   function handleChooseManual() {
     clearInterval(intervalRef.current);
     stopAlarm();

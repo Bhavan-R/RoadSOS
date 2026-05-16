@@ -10,17 +10,17 @@
 - RequestLogMiddleware: structured log line for every request — method,
   path, status, duration. Helps post-demo analysis.
 """
+
 from __future__ import annotations
 
 import logging
 import time
 import uuid
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp
 
 logger = logging.getLogger(__name__)
 

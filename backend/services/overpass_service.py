@@ -16,18 +16,18 @@ Reliability hardening:
   by both `amenity=hospital` and `healthcare=hospital` appears once
 - Entries that have neither a useful name NOR a dialable phone are dropped
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import math
-from typing import Optional
 
 import httpx
 
-from services.cache import overpass_cache, location_key
-from services.phone_utils import normalize_phone, is_dialable
+from services.cache import location_key, overpass_cache
 from services.hours_parser import parse_is_open
+from services.phone_utils import is_dialable, normalize_phone
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +68,14 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6371.0
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    )
     return R * 2 * math.asin(math.sqrt(a))
 
 
-def classify_element(tags: dict) -> Optional[str]:
+def classify_element(tags: dict) -> str | None:
     for (key, val), category in CATEGORY_MAP:
         if tags.get(key) == val:
             return category
@@ -116,7 +119,9 @@ out body center;
 out skel qt;""".strip()
 
 
-def parse_element(element: dict, user_lat: float, user_lon: float, region: Optional[str] = None) -> Optional[dict]:
+def parse_element(
+    element: dict, user_lat: float, user_lon: float, region: str | None = None
+) -> dict | None:
     tags = element.get("tags", {})
     category = classify_element(tags)
     if not category:
@@ -210,7 +215,7 @@ async def _fetch_with_retry(query: str) -> dict:
     Overpass main endpoint is flaky during peak hours. Fall back to mirrors.
     Retries with exponential backoff (1s, 2s, 4s) before giving up.
     """
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
     for endpoint in OVERPASS_FALLBACK_URLS:
         for attempt in range(OVERPASS_RETRIES):
             try:
@@ -220,10 +225,14 @@ async def _fetch_with_retry(query: str) -> dict:
                     return resp.json()
             except (httpx.HTTPError, ValueError) as exc:
                 last_exc = exc
-                wait = 2 ** attempt  # 1s, 2s, 4s
+                wait = 2**attempt  # 1s, 2s, 4s
                 logger.warning(
                     "Overpass attempt %d/%d at %s failed (%s); retrying in %ds",
-                    attempt + 1, OVERPASS_RETRIES, endpoint, type(exc).__name__, wait,
+                    attempt + 1,
+                    OVERPASS_RETRIES,
+                    endpoint,
+                    type(exc).__name__,
+                    wait,
                 )
                 await asyncio.sleep(wait)
         logger.warning("Overpass endpoint %s exhausted; trying next mirror", endpoint)
@@ -261,5 +270,7 @@ async def build_and_fetch_query(lat: float, lon: float, radius: int = 5000) -> l
     phones_found = sum(1 for c in sorted_results if c.get("phone"))
     if phones_found > 0 or len(sorted_results) == 0:
         await overpass_cache.set(cache_key, sorted_results)
-    logger.info(f"Overpass fetched · {cache_key} · {len(sorted_results)} contacts · {phones_found} with phone")
+    logger.info(
+        f"Overpass fetched · {cache_key} · {len(sorted_results)} contacts · {phones_found} with phone"
+    )
     return sorted_results

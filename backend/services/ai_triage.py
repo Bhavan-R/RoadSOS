@@ -1,29 +1,38 @@
 """AI-driven contact prioritisation.
 
-Uses Anthropic's Claude Haiku 4.5 for situation-aware reordering. Always falls
+Uses Google's Gemini 2.0 Flash for situation-aware reordering. Always falls
 back to a deterministic rule-based ordering if the API is unreachable, errors,
 or returns malformed output. The fallback produces the same response shape so
 the frontend never sees a difference.
 
 Why fallback matters: emergency software cannot have its core feature dependent
-on a 3rd-party API. The brief explicitly scores "reliability".
+on a 3rd-party API.
+
+Why Gemini Flash: free tier (60 RPM, 1500 RPD on 2.0-flash, 15 RPM on 1.5-flash),
+low latency, JSON-mode supported, no billing required to start.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
 import re
-from typing import Optional
 
-from anthropic import AsyncAnthropic
+import httpx
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-haiku-4-5-20251001"
+# Gemini 2.0 Flash — current free-tier default with the highest free quota.
+MODEL = "gemini-2.0-flash"
 MAX_TOKENS = 2048
+TIMEOUT_S = 15.0
 
-_client: Optional[AsyncAnthropic] = None
+# REST endpoint (no SDK dependency — keeps requirements lean and matches our
+# existing httpx-everywhere style).
+GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+)
 
 SYSTEM_PROMPT = """You are RoadSOS Triage — an emergency dispatcher AI for road accidents.
 
@@ -46,13 +55,6 @@ PRIORITY RULES (in strict order):
 4. Not injured + no block           → repair → tyre → police → towing
 
 Within a priority tier, the closer service wins."""
-
-
-def get_client() -> AsyncAnthropic:
-    global _client
-    if _client is None:
-        _client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
-    return _client
 
 
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
@@ -84,7 +86,7 @@ def rule_based_triage(injured: bool, blocking: bool, contacts: list[dict]) -> di
     }
 
 
-def _validate_ai_result(result: object, original_count: int) -> Optional[dict]:
+def _validate_ai_result(result: object, original_count: int) -> dict | None:
     """Return the result if it matches the contract, else None."""
     if not isinstance(result, dict):
         return None
@@ -99,13 +101,31 @@ def _validate_ai_result(result: object, original_count: int) -> Optional[dict]:
     return result
 
 
+def _extract_gemini_text(response_json: dict) -> str:
+    """Pull the model's text response out of Gemini's nested envelope.
+
+    Gemini returns:
+      { "candidates": [
+          { "content": { "parts": [ { "text": "..." } ] } }
+      ] }
+    """
+    candidates = response_json.get("candidates") or []
+    if not candidates:
+        return ""
+    content = candidates[0].get("content") or {}
+    parts = content.get("parts") or []
+    if not parts:
+        return ""
+    return (parts[0].get("text") or "").strip()
+
+
 async def prioritize_contacts(injured: bool, blocking: bool, contacts: list[dict]) -> dict:
     if not contacts:
         return {"contacts": [], "reason": "No nearby services found"}
 
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    api_key = os.getenv("GEMINI_API_KEY", "")
     if not api_key:
-        logger.info("ANTHROPIC_API_KEY not set — using rule-based triage")
+        logger.info("GEMINI_API_KEY not set — using rule-based triage")
         return rule_based_triage(injured, blocking, contacts)
 
     try:
@@ -119,8 +139,11 @@ async def prioritize_contacts(injured: bool, blocking: bool, contacts: list[dict
         situation_text = "; ".join(situation)
 
         summary = [
-            {"name": c.get("name", "?"), "category": c.get("category", "?"),
-             "distance_km": c.get("distance", "?")}
+            {
+                "name": c.get("name", "?"),
+                "category": c.get("category", "?"),
+                "distance_km": c.get("distance", "?"),
+            }
             for c in contacts
         ]
 
@@ -133,14 +156,31 @@ async def prioritize_contacts(injured: bool, blocking: bool, contacts: list[dict
             f"{json.dumps(contacts, indent=2)}"
         )
 
-        response = await get_client().messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
-        )
+        # Gemini puts the system prompt in `systemInstruction`, not in messages.
+        # JSON mode is opt-in via responseMimeType.
+        payload = {
+            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+            "contents": [
+                {"role": "user", "parts": [{"text": user_message}]},
+            ],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": MAX_TOKENS,
+                "responseMimeType": "application/json",
+            },
+        }
 
-        raw = response.content[0].text.strip()
+        url = GEMINI_URL.format(model=MODEL, key=api_key)
+        async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
+            r = await client.post(url, json=payload)
+            r.raise_for_status()
+            response_json = r.json()
+
+        raw = _extract_gemini_text(response_json)
+        if not raw:
+            logger.warning("AI returned empty response · using rule-based fallback")
+            return rule_based_triage(injured, blocking, contacts)
+
         cleaned = _FENCE_RE.sub("", raw).strip()
 
         try:

@@ -19,9 +19,11 @@ Reliability hardening:
 - Rate-limited per IP via services.rate_limiter.
 - Source label honestly reports which upstreams actually contributed.
 """
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -137,18 +139,14 @@ async def search_facilities(
 
     # ─── Phase 3: merge, dedupe, sort ────────────────────────────────────
     merged = deduplicate((osm_contacts or []) + (google_contacts or []))
-    try:
+    with contextlib.suppress(Exception):  # malformed contact shouldn't break the response
         merged.sort(key=lambda x: x.get("distance", float("inf")))
-    except Exception:
-        pass  # malformed contact shouldn't break the response
 
     # ─── Phase 4: phone enrichment for top closest phoneless contacts ────
     # No-op if no Google API key is configured. Capped to 6 lookups so
     # one search never costs more than ~6 × Place Details requests.
     try:
-        merged = await enrich_missing_phones(
-            merged, region=geo.get("country_code"), max_lookups=6
-        )
+        merged = await enrich_missing_phones(merged, region=geo.get("country_code"), max_lookups=6)
     except Exception as exc:
         logger.warning("Phone enrichment failed: %s", exc)
 

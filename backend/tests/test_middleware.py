@@ -1,4 +1,5 @@
 """Smoke tests for the FastAPI app with middleware wired in."""
+
 from fastapi.testclient import TestClient
 
 # Import the app — this also tests that all imports + wiring work
@@ -77,11 +78,16 @@ class TestTriageValidation:
 
 class TestDispatchValidation:
     def test_valid_request_returns_summary(self):
-        r = client.post("/dispatch-summary", json={
-            "lat": 12.97, "lon": 77.59,
-            "landmark": "Bannerghatta Road",
-            "injured": True, "blocking": True,
-        })
+        r = client.post(
+            "/dispatch-summary",
+            json={
+                "lat": 12.97,
+                "lon": 77.59,
+                "landmark": "Bannerghatta Road",
+                "injured": True,
+                "blocking": True,
+            },
+        )
         assert r.status_code == 200
         body = r.json()
         assert "summary" in body
@@ -89,8 +95,13 @@ class TestDispatchValidation:
         assert body["source"] in ("ai", "template")
 
     def test_invalid_coordinates_rejected(self):
-        r = client.post("/dispatch-summary", json={
-            "lat": 999, "lon": 0,
-            "injured": False, "blocking": False,
-        })
+        r = client.post(
+            "/dispatch-summary",
+            json={
+                "lat": 999,
+                "lon": 0,
+                "injured": False,
+                "blocking": False,
+            },
+        )
         assert r.status_code == 422

@@ -1,4 +1,5 @@
 """Token-bucket rate limiter tests."""
+
 import asyncio
 
 import pytest

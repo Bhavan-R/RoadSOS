@@ -1,12 +1,17 @@
 """Tests for the rule-based fallback in ai_triage.
 
-We don't test the Claude API call here — that requires a live API key and
-network. The fallback is the safety net that the brief specifically rewards
-("reliability"). If the fallback is correct, the API call merely improves the
-ordering — it doesn't change correctness.
+We don't test the Gemini API call here — that requires a live API key and
+network. The fallback is the safety net that guarantees a working response
+shape even if the model is unreachable, errors, or returns malformed JSON.
+If the fallback is correct, the API call merely improves the ordering —
+it doesn't change correctness.
 """
-from services.ai_triage import rule_based_triage, _validate_ai_result
 
+from services.ai_triage import (
+    _extract_gemini_text,
+    _validate_ai_result,
+    rule_based_triage,
+)
 
 CONTACTS = [
     {"id": "1", "name": "Apollo Hospital", "category": "hospital", "distance": 2.3},
@@ -88,3 +93,33 @@ class TestValidateAiResult:
     def test_empty_reason(self):
         result = {"contacts": [{"id": "x"}], "reason": ""}
         assert _validate_ai_result(result, 1) is None
+
+
+class TestExtractGeminiText:
+    """Gemini wraps the model's response in a nested envelope; we have to
+    dig text out of candidates[0].content.parts[0].text and tolerate every
+    way the envelope can be incomplete."""
+
+    def test_happy_path(self):
+        response = {"candidates": [{"content": {"parts": [{"text": "  hello world  "}]}}]}
+        assert _extract_gemini_text(response) == "hello world"
+
+    def test_no_candidates(self):
+        assert _extract_gemini_text({"candidates": []}) == ""
+        assert _extract_gemini_text({}) == ""
+
+    def test_no_content(self):
+        assert _extract_gemini_text({"candidates": [{}]}) == ""
+
+    def test_no_parts(self):
+        response = {"candidates": [{"content": {"parts": []}}]}
+        assert _extract_gemini_text(response) == ""
+
+    def test_no_text_field(self):
+        response = {"candidates": [{"content": {"parts": [{}]}}]}
+        assert _extract_gemini_text(response) == ""
+
+    def test_explicit_none_values(self):
+        # Defensive: real API responses can carry explicit nulls.
+        response = {"candidates": [{"content": {"parts": [{"text": None}]}}]}
+        assert _extract_gemini_text(response) == ""

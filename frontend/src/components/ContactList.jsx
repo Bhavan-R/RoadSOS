@@ -1,8 +1,24 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import ContactCard from './ContactCard';
 import { CATS } from '../App';
 
+// Map filter chip keys to i18n keys. "All" + "Puncture" are filter-only;
+// the rest already exist as category.* keys used elsewhere.
+const FILTER_I18N = {
+  All: 'filters.all',
+  Hospital: 'category.hospital',
+  Police: 'category.police',
+  Repair: 'category.repair',
+  Towing: 'category.towing',
+  Fire: 'category.fire',
+  Showroom: 'category.showroom',
+  Puncture: 'filters.puncture',
+};
+
 export default function ContactList({ contacts, loading, error, cachedAt, cat, setCat }) {
+  const { t } = useTranslation();
+
   // Memoize filtered contacts based on the selected category
   const filtered = useMemo(() => {
     if (!contacts) return [];
@@ -19,8 +35,8 @@ export default function ContactList({ contacts, loading, error, cachedAt, cat, s
     return (
       <div className="loading-box">
         <div className="spinner" aria-hidden="true" />
-        <div style={{ fontWeight: 500, color: '#FFFFFF' }}>Finding nearby help...</div>
-        <div style={{ fontSize: 11, marginTop: 4 }}>Searching hospitals, police &amp; more</div>
+        <div style={{ fontWeight: 500, color: '#FFFFFF' }}>{t('loading.finding')}</div>
+        <div style={{ fontSize: 11, marginTop: 4 }}>{t('loading.subtitle')}</div>
       </div>
     );
   }
@@ -30,7 +46,7 @@ export default function ContactList({ contacts, loading, error, cachedAt, cat, s
     return (
       <div className="loading-box" role="alert">
         <div style={{ fontSize: 24, marginBottom: 8 }}>⚠️</div>
-        <div style={{ fontWeight: 500, color: '#FFFFFF' }}>Could not load contacts</div>
+        <div style={{ fontWeight: 500, color: '#FFFFFF' }}>{t('loading.error')}</div>
         <div style={{ fontSize: 11, marginTop: 4 }}>{error}</div>
       </div>
     );
@@ -47,7 +63,7 @@ export default function ContactList({ contacts, loading, error, cachedAt, cat, s
             className={`chip ${c === cat ? "chip-on" : "chip-off"}`}
             onClick={() => setCat(c)}
           >
-            {c}
+            {t(FILTER_I18N[c] || c)}
           </button>
         ))}
       </div>
@@ -60,16 +76,16 @@ export default function ContactList({ contacts, loading, error, cachedAt, cat, s
 
       {cachedAt && (
         <div className="cached-note">
-          ⏱ Showing cached results from {cachedAt}
+          ⏱ {t('list.cached_results', { date: cachedAt })}
         </div>
       )}
 
       {/* Service List */}
       <div className="svc-list">
         {(!contacts || contacts.length === 0) ? (
-          <div className="empty">No services found here. Call the national emergency number above.</div>
+          <div className="empty">{t('list.empty_all')}</div>
         ) : filtered.length === 0 ? (
-          <div className="empty">No services found in this category</div>
+          <div className="empty">{t('list.empty_category')}</div>
         ) : (
           filtered.map((c, idx) => (
             <ContactCard

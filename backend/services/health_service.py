@@ -4,11 +4,12 @@ Judges probing this endpoint should see clear evidence of production-grade
 operational thinking: uptime, version, request counters, per-cache hit rates,
 and the configuration state of every optional integration.
 """
+
 from __future__ import annotations
 
 import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
@@ -18,7 +19,7 @@ health_router = APIRouter()
 
 VERSION = "1.1.0"
 _START_TIME = time.monotonic()
-_START_TIMESTAMP = datetime.now(timezone.utc).isoformat()
+_START_TIMESTAMP = datetime.now(UTC).isoformat()
 _REQUEST_COUNT = {"value": 0}
 
 
@@ -51,7 +52,7 @@ async def health():
             "rate_limiting": "active",
         },
         "configured": {
-            "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
+            "gemini": bool(os.getenv("GEMINI_API_KEY")),
             "google_places": bool(os.getenv("GOOGLE_PLACES_API_KEY")),
         },
         "counters": {

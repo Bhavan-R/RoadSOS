@@ -17,17 +17,16 @@ Cases we don't handle (returns False, which is conservative for closed):
 - Date ranges ("Apr 01-Oct 31 ...")
 - "off" / "closed" overrides
 """
+
 from __future__ import annotations
 
 from datetime import datetime, time
-from typing import Optional
-
 
 _DAY_NAMES = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 _DAY_INDEX = {d: i for i, d in enumerate(_DAY_NAMES)}
 
 
-def parse_is_open(opening_hours: Optional[str], now: Optional[datetime] = None) -> Optional[bool]:
+def parse_is_open(opening_hours: str | None, now: datetime | None = None) -> bool | None:
     """Return True/False if the rule can be evaluated, None if input is empty/unparseable."""
     if not opening_hours or not isinstance(opening_hours, str):
         return None
@@ -59,7 +58,7 @@ def parse_is_open(opening_hours: Optional[str], now: Optional[datetime] = None) 
     return False if matched_any_rule else None
 
 
-def _evaluate_rule(rule: str, today: str, current_time: time) -> Optional[bool]:
+def _evaluate_rule(rule: str, today: str, current_time: time) -> bool | None:
     """Returns True if open now, False if rule explicitly applies to today and we are outside hours,
     None if the rule does not parse / is not about today."""
     if " off" in rule.lower() or rule.lower().endswith("closed"):

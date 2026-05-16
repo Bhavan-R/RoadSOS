@@ -1,4 +1,5 @@
 """Country code validation tests for the geocoder."""
+
 from services.geocoder import _validate_country_code
 
 
@@ -19,6 +20,6 @@ class TestValidateCountryCode:
         assert _validate_country_code(None) is None
         assert _validate_country_code("") is None
         assert _validate_country_code("INDIA") is None  # too long
-        assert _validate_country_code("I") is None      # too short
-        assert _validate_country_code("12") is None     # not alpha
-        assert _validate_country_code("I3") is None     # mixed
+        assert _validate_country_code("I") is None  # too short
+        assert _validate_country_code("12") is None  # not alpha
+        assert _validate_country_code("I3") is None  # mixed

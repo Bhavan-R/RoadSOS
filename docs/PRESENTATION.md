@@ -83,7 +83,7 @@ Emergency services exist. **Finding them quickly enough is the problem.**
 │  In-memory TTL cache · GZipMiddleware · structured logs  │
 ├─────────────────────────────────────────────────────────┤
 │  GET  /search          → OSM Overpass + Google Places   │
-│  POST /triage          → Claude Haiku 4.5 + rule fallback│
+│  POST /triage          → Gemini 2.0 Flash + rule fallback│
 │  POST /dispatch-summary → AI-generated dispatch text     │
 │  GET  /health          → uptime · API status · cache    │
 │  GET  /offline-pack    → 196-country JSON               │
@@ -92,10 +92,10 @@ Emergency services exist. **Finding them quickly enough is the problem.**
 Open & free APIs preferred:
 ✅ OpenStreetMap (free, global, open data)
 ✅ Nominatim (free reverse geocoding)
-✅ Anthropic Claude (with rule-based fallback)
+✅ Google Gemini 2.0 Flash (with rule-based fallback)
 ```
 
-**Stack:** React 18 + Vite 8 PWA · FastAPI (Python) · OpenStreetMap Overpass · Nominatim · Anthropic Claude Haiku 4.5
+**Stack:** React 18 + Vite 8 PWA · FastAPI (Python) · OpenStreetMap Overpass · Nominatim · Google Gemini 2.0 Flash
 
 ---
 

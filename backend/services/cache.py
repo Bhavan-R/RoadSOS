@@ -4,11 +4,12 @@ Why: Overpass and Google Places are rate-limited. During a demo or load test the
 
 The cache is per-process (in-memory). It is not shared across worker processes — sufficient for the hackathon-tier single-worker Render deployment.
 """
+
 from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Optional
+from typing import Any
 
 
 class TTLCache:
@@ -23,7 +24,7 @@ class TTLCache:
     def _is_expired(self, ts: float) -> bool:
         return (time.monotonic() - ts) > self._ttl
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         async with self._lock:
             entry = self._data.get(key)
             if entry is None:

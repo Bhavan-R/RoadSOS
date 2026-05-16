@@ -1,0 +1,1037 @@
+\documentclass[11pt, a4paper]{article}
+
+% ─── Packages ─────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{textcomp}
+
+% ─── Colours ──────────────────────────────────────────────────────────
+\definecolor{rsnavy}{HTML}{0B1424}
+\definecolor{rsblue}{HTML}{1D4ED8}
+\definecolor{rsred}{HTML}{DC2626}
+\definecolor{rsteal}{HTML}{0F766E}
+\definecolor{rsgrey}{HTML}{475569}
+\definecolor{rscode}{HTML}{F1F5F9}
+
+% ─── Hyperlinks ───────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=rsblue,
+  urlcolor=rsblue,
+  citecolor=rsblue,
+  pdftitle={RoadSOS Technical Documentation},
+  pdfauthor={RoadSOS Engineering},
+  pdfsubject={Architecture and Implementation Reference}
+}
+
+% ─── Listings ─────────────────────────────────────────────────────────
+\lstdefinestyle{rsstyle}{
+  backgroundcolor=\color{rscode},
+  basicstyle=\ttfamily\footnotesize,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numbersep=6pt,
+  numberstyle=\tiny\color{rsgrey},
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2,
+  frame=single,
+  framesep=4pt,
+  rulecolor=\color{rsgrey!30},
+  xleftmargin=14pt
+}
+\lstset{style=rsstyle}
+
+% ─── Headings ─────────────────────────────────────────────────────────
+\titleformat{\section}{\Large\bfseries\color{rsnavy}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{rsblue}}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{rsnavy}}{\thesubsubsection}{0.6em}{}
+
+% ─── Header / Footer ──────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{rsgrey} RoadSOS Technical Documentation}
+\fancyhead[R]{\small\color{rsgrey} \nouppercase{\leftmark}}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ─── Custom command for inline file references ────────────────────────
+\newcommand{\file}[1]{\texttt{\small\color{rsblue}#1}}
+\newcommand{\code}[1]{\texttt{\small#1}}
+
+% ─── Title ────────────────────────────────────────────────────────────
+\title{
+  \vspace{-1.5cm}
+  \Huge\bfseries\color{rsnavy} RoadSOS \\
+  \large\normalfont\color{rsgrey} Technical Documentation \\[0.4em]
+  \normalsize\color{rsgrey} Architecture, Algorithms, and Implementation Reference
+}
+\author{
+  \small\color{rsgrey} \texttt{github.com/Arthrevs/Roadproj} \\
+  \small\color{rsgrey} Branch: \texttt{main} \quad Commit: \texttt{f94dc2a}
+}
+\date{\small\color{rsgrey} May 2026}
+
+% ──────────────────────────────────────────────────────────────────────
+% DOCUMENT
+% ──────────────────────────────────────────────────────────────────────
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\vspace{0.5cm}
+
+\begin{center}
+\colorbox{rscode}{\parbox{0.85\textwidth}{\centering\small
+\textbf{Scope.} This document is the engineering reference for RoadSOS. It covers the request lifecycle, the OpenStreetMap Overpass query layer, the Google Places fallback strategy, the four-tier offline cache hierarchy, the AI triage model, internationalization across 43 languages, the real-time map renderer, crash detection signals, and the deployment topology. Every number cited is grounded in source. Every external dependency is named. No marketing.
+}}
+\end{center}
+
+\vspace{0.4cm}
+{\small\tableofcontents}
+\newpage
+
+% ──────────────────────────────────────────────────────────────────────
+\section{System Overview}
+% ──────────────────────────────────────────────────────────────────────
+
+RoadSOS is a Progressive Web Application that locates emergency-services contacts (hospitals, police, ambulances, fire stations, towing, repair, tyre/puncture, showrooms) within driving distance of a user's GPS position and dispatches their coordinates to pre-configured emergency contacts via WhatsApp or SMS.
+
+\subsection{Top-Level Topology}
+
+\begin{lstlisting}[language={},numbers=none,frame=none,backgroundcolor=\color{white}]
++---------------------------------------------------------------+
+|                   BROWSER  (PWA, installable)                 |
+|                                                               |
+|   React 18  +  Vite 8  +  Workbox 7 (Service Worker)          |
+|   |- Leaflet 1.9.4    (real OSM map, dark tiles)              |
+|   |- i18next 26       (43 languages, RTL support)             |
+|   |- localStorage     (24h search-result cache)               |
+|   `- bundled JSON     (249 facilities x 196 countries)        |
++----------------------------+----------------------------------+
+                             |  HTTPS  (CORS-allowlisted)
+                             v
++---------------------------------------------------------------+
+|              FASTAPI BACKEND  (Render, Python 3.11.9)         |
+|                                                               |
+|   uvicorn + asyncio + httpx                                   |
+|   |- /search    (4-phase orchestrator)                        |
+|   |- /triage    (Gemini 2.0 Flash + rule-based fallback)      |
+|   |- /dispatch  (telemetry sink for SOS events)               |
+|   |- /health    (liveness + version)                          |
+|   `- /offline-pack  (static facility bundle for warm cache)   |
++----+--------------------+--------------------+----------------+
+     |                    |                    |
+     v                    v                    v
++----------+        +------------+      +--------------+
+|   OSM    |        |   Google   |      |  Nominatim   |
+| Overpass |        |   Places   |      | (geocoder)   |
+|  (free)  |        |   (paid)   |      |   (free)     |
++----------+        +------------+      +--------------+
+\end{lstlisting}
+
+\subsection{Tech Stack at a Glance}
+
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Layer} & \textbf{Components} \\
+\midrule
+Frontend runtime & React 18.3.1, React DOM 18.3.1, React Router 7.15.0 \\
+Build tool & Vite 8.0.12, vite-plugin-pwa 1.3.0 (\code{injectManifest}) \\
+Service worker & Workbox 7.4.1 (precaching, expiration, routing, strategies) \\
+Map & Leaflet 1.9.4 + react-leaflet 4.2.1; CartoDB Dark Matter tiles \\
+i18n & i18next 26.2.0 + react-i18next 17.0.8; 43 locales \\
+Icons & lucide-react 1.16.0 \\
+Backend runtime & FastAPI 0.115.0 + uvicorn 0.30.6, Python 3.11.9 \\
+Async HTTP & httpx 0.27.2 \\
+AI & Google Gemini 2.0 Flash via REST (no SDK; uses httpx) \\
+Phone normalization & phonenumbers 8.13.46 \\
+Storage & SQLite via aiosqlite 0.20.0 (offline-pack only) \\
+Validation & pydantic 2.9.2 \\
+Lint / format / test & ruff 0.11.13, pytest 8.3.3, pytest-asyncio 0.24.0, vitest 2.1.4 \\
+Deployment & Render (backend), Vercel (frontend) \\
+CI/CD & GitHub Actions: \code{frontend-ci.yml}, \code{backend-tests.yml}, \code{pr-guard.yml} \\
+\bottomrule
+\end{tabularx}
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Backend: The \texttt{/search} Orchestrator}
+% ──────────────────────────────────────────────────────────────────────
+
+The search endpoint resolves the question \emph{``what emergency services are near these coordinates, and what are their phone numbers?''} It is implemented in \file{backend/services/search\_service.py} as a four-phase asynchronous pipeline.
+
+\subsection{Phase 1 --- Parallel Geocode and Overpass}
+
+Two operations begin simultaneously via \code{asyncio.gather}: a reverse-geocode against Nominatim and an Overpass query against OpenStreetMap.
+
+\begin{lstlisting}[language=Python,caption={search\_service.py --- Phase 1 (lines 127--129)}]
+geo_task = asyncio.create_task(_safe_geocode(lat, lon))
+osm_task = asyncio.create_task(_safe_overpass(lat, lon))
+geo, osm_contacts = await asyncio.gather(geo_task, osm_task)
+\end{lstlisting}
+
+Wall-clock latency is therefore $\max(t_{\text{geocode}}, t_{\text{overpass}})$ rather than the sum. Both are wrapped in \code{\_safe\_*} helpers that catch every exception and return a valid fallback shape; failures never propagate.
+
+\subsubsection{The Overpass Query Layer}
+
+\file{backend/services/overpass\_service.py} builds an Overpass QL query that selects nine categories within a configurable radius (default 5{,}000 m). The query is structured as a union over tag filters:
+
+\begin{lstlisting}[language={},caption={Overpass QL --- categories targeted (overpass\_service.py:85--119)}]
+[out:json][timeout:25];
+(
+  nwr["amenity"="hospital"](around:5000, LAT, LON);
+  nwr["amenity"="clinic"] ["emergency"="yes"](around:5000, LAT, LON);
+  nwr["amenity"="police"](around:5000, LAT, LON);
+  nwr["amenity"="fire_station"](around:5000, LAT, LON);
+  nwr["amenity"="car_repair"](around:5000, LAT, LON);
+  nwr["shop"="car_repair"](around:5000, LAT, LON);
+  nwr["shop"="tyres"](around:5000, LAT, LON);
+  nwr["shop"="car"](around:5000, LAT, LON);
+  nwr["emergency"="ambulance_station"](around:5000, LAT, LON);
+);
+out center;
+\end{lstlisting}
+
+If the first response yields fewer than three results, the radius doubles to 10{,}000 m and the query repeats. This handles sparse regions without paying for the wider radius on dense urban queries.
+
+\subsubsection{Multi-Mirror Retry Strategy}
+
+A single Overpass endpoint frequently rate-limits or 502s. The fetcher rotates across three independent mirrors with exponential backoff:
+
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Attempt} & \textbf{Endpoint and Backoff} \\
+\midrule
+1 & \code{https://overpass-api.de/api/interpreter} (no delay) \\
+2 & \code{https://overpass.kumi.systems/api/interpreter} (2 s) \\
+3 & \code{https://overpass.openstreetmap.fr/api/interpreter} (4 s) \\
+\bottomrule
+\end{tabularx}
+
+Each request has a 30-second timeout. If all three mirrors fail, the function returns \code{[]} rather than raising; downstream phases continue with whatever data exists.
+
+\subsubsection{Element Parsing and Distance}
+
+Each Overpass element is normalised by \code{parse\_element} (overpass\_service.py:122--170):
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item Extract \code{lat}, \code{lon} (from the element or its \code{center} field for ways).
+  \item Compute haversine distance from the user, expressed in kilometres rounded to two decimals.
+  \item Map the OSM tag to one of nine internal categories: \texttt{hospital}, \texttt{police}, \texttt{ambulance}, \texttt{fire}, \texttt{towing}, \texttt{repair}, \texttt{tyre}, \texttt{showroom}.
+  \item Drop results with no name \emph{and} no phone (reduces ``Unnamed Building'' noise).
+  \item Parse the \code{opening\_hours} tag into a boolean \code{isOpen} via \file{services/hours\_parser.py} (supports \code{24/7}, day ranges, time ranges, and holiday tags).
+\end{enumerate}
+
+The haversine implementation is unrolled in pure Python (no GIS dependency):
+
+\begin{lstlisting}[language=Python,caption={overpass\_service.py:66--78}]
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371.0  # Earth radius (km)
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2 +
+         math.cos(math.radians(lat1)) *
+         math.cos(math.radians(lat2)) *
+         math.sin(dlon / 2) ** 2)
+    return 2 * R * math.asin(math.sqrt(a))
+\end{lstlisting}
+
+\subsubsection{Proximity Deduplication}
+
+OSM frequently lists the same facility as both a node (the entrance) and a way (the building polygon). \code{\_dedupe\_smart} (overpass\_service.py:185--210) keeps results that are either more than 50 m apart \emph{or} have substantially different names; otherwise the earlier-seen entry wins.
+
+\subsection{Phase 2 --- Conditional Google Places Fallback}
+
+Phase 2 fires only if Phase 1 produced fewer than three contacts with a dialable phone number. This conserves quota: in dense OSM regions (most of Europe, India, and East Asia), Google is never called.
+
+\begin{lstlisting}[language=Python,caption={search\_service.py --- Phase 2 trigger (lines 135--138)}]
+phoned_osm = [c for c in osm_contacts if c.get("phone")]
+google_contacts: list[dict] = []
+if len(phoned_osm) < 3:
+    google_contacts = await _safe_google(lat, lon, geo.get("country_code"))
+\end{lstlisting}
+
+\file{services/googleplaces\_service.py} issues four parallel Nearby Search calls (hospital, police, car\_repair, fire\_station) each capped at five results. Per-result Place Details lookups add the \code{formatted\_phone\_number} field. The reverse-geocoded country code from Phase 1 is passed as a region hint to improve relevance.
+
+\subsubsection{Multi-Key Rotation}
+
+The \code{Mapsplatformkey} environment variable is parsed as a comma-separated list of API keys. Round-robin rotation distributes load across multiple billing accounts:
+
+\begin{lstlisting}[language=Python,caption={googleplaces\_service.py:30--36}]
+def _load_keys() -> list[str]:
+    multi = os.getenv("Mapsplatformkey", "")
+    keys = [k.strip() for k in multi.split(",") if k.strip()]
+    if not keys:
+        single = os.getenv("Mapsplatformkey", "")
+        keys = [single] if single else []
+    return keys
+\end{lstlisting}
+
+If no key is configured, Google is silently disabled --- the search still returns whatever Overpass produced.
+
+\subsection{Phase 3 --- Merge and Deduplicate}
+
+The two contact lists are merged and deduplicated by phone digits first, then by lowercased name:
+
+\begin{lstlisting}[language=Python,caption={search\_service.py:42--64 --- deduplication}]
+def deduplicate(contacts: list[dict]) -> list[dict]:
+    out, seen_names = [], set()
+    for c in contacts:
+        if not isinstance(c, dict): continue
+        name_key = (c.get("name") or "").lower().strip()
+        if not name_key or name_key in seen_names: continue
+        if any(phones_match(c.get("phone"), e.get("phone")) for e in out):
+            continue
+        seen_names.add(name_key)
+        out.append(c)
+    return out
+\end{lstlisting}
+
+\code{phones\_match} (phone\_utils.py) compares the last ten digits after \code{phonenumbers}-normalisation. This handles cases where OSM and Google disagree on transliteration (``GS Custom'' vs.\ ``gs sustom'') but the phone number is canonical. The merged list is then sorted by distance.
+
+\subsection{Phase 4 --- Phone Enrichment}
+
+For the top six closest results without a phone number, the system performs a Find Place from Text lookup against Google Places, biased to a 500-metre radius. On miss, a fallback Nearby Search within 100 m provides a second chance. Each enrichment costs at most one Place Details billable call, capped at six per search to bound worst-case spend.
+
+\subsection{Response Shape}
+
+\begin{lstlisting}[language=json,caption={Sample /search response}]
+{
+  "contacts": [
+    {
+      "id": "node/8127364521",
+      "name": "Apollo Hospitals, Bannerghatta",
+      "category": "hospital",
+      "phone": "080-26793000",
+      "lat": 12.8932, "lon": 77.5972,
+      "distance": 1.42,
+      "source": "OpenStreetMap",
+      "isOpen": true
+    }
+  ],
+  "source": "OpenStreetMap + Google Places",
+  "landmark": "Bannerghatta Road, BTM Layout, Bengaluru",
+  "country_code": "IN",
+  "count": 14
+}
+\end{lstlisting}
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Backend: Caching}
+% ──────────────────────────────────────────────────────────────────────
+
+\file{backend/services/cache.py} implements an async-safe in-memory TTL cache with LRU eviction. Three module singletons are configured for the dominant lookups:
+
+\begin{tabularx}{\textwidth}{l c c X}
+\toprule
+\textbf{Cache} & \textbf{TTL} & \textbf{Max entries} & \textbf{Key strategy} \\
+\midrule
+\code{overpass\_cache} & 1 hour & 200 & \code{round(lat,4)\_round(lon,4)\_r5000} \\
+\code{google\_cache} & 1 hour & 200 & coordinate key + region code \\
+\code{geocode\_cache} & 24 hours & 500 & coordinate key only \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Key Granularity}
+
+Coordinates are rounded to four decimal places before keying. At the equator one degree of latitude is approximately 111 km, so $10^{-4}$ degrees $\approx$ 11 metres. Two users standing 10 m apart resolve to the same cache key and share results --- semantically correct for ``what is near me'' queries, and trivially exploitable for warm-cache benchmarks (a repeated query from the same demo location returns in tens of milliseconds).
+
+\subsection{Eviction and Concurrency}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{LRU on capacity.} When \code{len(cache) >= max\_entries}, the entry with the oldest timestamp is removed.
+  \item \textbf{Opportunistic expiry.} Each \code{set} call scans for and removes expired entries before inserting.
+  \item \textbf{Async lock.} Each cache instance holds an \code{asyncio.Lock}; concurrent \code{get}/\code{set} operations are serialised per cache.
+\end{itemize}
+
+\subsection{Negative-Result Policy}
+
+Overpass results with zero phone numbers are not cached. This is deliberate: a phoneless cache hit would short-circuit Phase 2 (Google enrichment), permanently denying the user phone-equipped contacts they could otherwise get. The cost is recomputation for sparse regions, accepted as a quality-over-latency trade.
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Backend: Rate Limiting}
+% ──────────────────────────────────────────────────────────────────────
+
+\file{services/rate\_limiter.py} implements a per-IP token bucket. Each client receives a bucket of capacity 10 that refills at the configured rate; requests consume one token. When the bucket is empty, the request receives \code{429 Too Many Requests} with a \code{Retry-After} header in seconds.
+
+\begin{tabularx}{\textwidth}{l c c X}
+\toprule
+\textbf{Endpoint} & \textbf{Rate} & \textbf{Burst} & \textbf{Notes} \\
+\midrule
+\code{GET /search} & 30 req/min & 10 & Per-IP \\
+\code{POST /triage} & 20 req/min & 10 & Per-IP, lower because AI calls are costlier \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Render Reverse-Proxy Awareness}
+
+Render terminates TLS at its edge and forwards requests with an \code{X-Forwarded-For} header. The default ASGI \code{request.client.host} reports the Render edge IP, which would collapse all users into a single bucket. \code{get\_client\_ip} (rate\_limiter.py:70) prefers the first entry of \code{X-Forwarded-For} when present:
+
+\begin{lstlisting}[language=Python,numbers=none,frame=none]
+xff = request.headers.get("x-forwarded-for", "")
+return xff.split(",")[0].strip() if xff else request.client.host
+\end{lstlisting}
+
+Buckets are stored in a plain Python dictionary protected by \code{asyncio.Lock}. They reset whenever the Render dyno cold-starts (free tier idle timeout: 15 minutes).
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Backend: AI Triage}
+% ──────────────────────────────────────────────────────────────────────
+
+\file{backend/services/ai\_triage.py} reorders a contact list to match the user's situation. The model is \texttt{gemini-2.0-flash}, called via direct REST against \url{https://generativelanguage.googleapis.com/v1beta/models/} (no SDK dependency --- uses the same \code{httpx} client as the rest of the backend). The free tier allows 60 requests per minute and 1500 requests per day with no billing requirement. Two boolean situational flags are accepted: \code{injured} and \code{blocking\_traffic}. JSON mode is opt-in via \code{generationConfig.responseMimeType = "application/json"}.
+
+\subsection{Prompt Contract}
+
+The system prompt mandates a strict JSON response with exactly two top-level keys:
+
+\begin{lstlisting}[language={},caption={Required model output schema}]
+{
+  "contacts": [<same items as input, reordered>],
+  "reason": "<one short sentence explaining the top pick>"
+}
+\end{lstlisting}
+
+Validation checks (ai\_triage.py:87--99) that:
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item the response parses as JSON,
+  \item \code{contacts} is a list of exactly the same length as the input,
+  \item every contact carries the same \code{id} as an input entry,
+  \item \code{reason} is a non-empty string.
+\end{enumerate}
+
+\subsection{Rule-Based Fallback}
+
+If the model call fails (no API key, network error, malformed response, validation failure, count mismatch), a deterministic priority table takes over:
+
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Situation} & \textbf{Priority order (descending)} \\
+\midrule
+Injured \& blocking & ambulance, hospital, police, towing, repair \\
+Injured only & ambulance, hospital, police, repair, towing \\
+Blocking only & police, towing, ambulance, hospital, repair \\
+Neither & repair, tyre, police, towing, hospital, ambulance \\
+\bottomrule
+\end{tabularx}
+
+The fallback is the same logic the model is prompted to follow, so the user-visible behaviour is consistent whether or not the model responded.
+
+\subsection{Independence from Search}
+
+Triage is a separate endpoint (\code{POST /triage}) called only after the user answers the situational questions. The map and contact list render with no AI dependency; if Gemini is entirely unreachable, the list is still useful.
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Backend: Reliability Guarantees}
+% ──────────────────────────────────────────────────────────────────────
+
+Every external call is wrapped in a \code{\_safe\_*} helper that catches all exceptions and returns a valid fallback shape:
+
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Wrapper} & \textbf{Fallback return} \\
+\midrule
+\code{\_safe\_overpass} & \code{[]} \\
+\code{\_safe\_google} & \code{[]} \\
+\code{\_safe\_geocode} & \code{\{"landmark": "lat°, lon°", "country\_code": null\}} \\
+\code{deduplicate} & Skips non-dict items rather than raising \\
+\code{triage\_service.prioritise} & Rule-based ordering with outer try/except as last resort \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Catastrophic Failure Path}
+
+If every upstream is unavailable simultaneously:
+
+\begin{lstlisting}[language=json,numbers=none,caption={Response when all upstreams fail}]
+{
+  "contacts": [],
+  "source": "none (upstreams unavailable)",
+  "landmark": "13.0827, 80.2707",
+  "country_code": null,
+  "count": 0
+}
+\end{lstlisting}
+
+The HTTP status is still \texttt{200 OK}. The frontend interprets an empty result as a trigger for the offline fallback chain (Section~\ref{sec:offline}).
+
+\subsection{Middleware Safety Net}
+
+\file{backend/middleware.py} adds three layers around every request:
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{RequestIDMiddleware.} Stamps every request with a UUID-v4 (or echoes the client's \code{X-Request-ID}) and exposes it on the response.
+  \item \textbf{RequestLogMiddleware.} Emits one log line per request: \code{method path status duration\_ms request\_id[:8]}.
+  \item \textbf{ErrorHandlingMiddleware.} Outermost. Catches anything an inner handler raised, logs the full traceback at \texttt{ERROR} with the request ID, and returns \code{503 Service Unavailable} with the request ID in the JSON body for support reporting.
+\end{enumerate}
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Frontend: Offline Architecture}
+\label{sec:offline}
+% ──────────────────────────────────────────────────────────────────────
+
+The frontend implements a four-tier fallback chain. Each tier is queried only if the preceding tier has no answer. The order is fixed in \file{frontend/src/App.jsx} (lines 197--255).
+
+\subsection{Tier 1 --- Live Backend Search}
+
+\code{searchNearby(lat, lon)} in \file{src/utils/overpass.js} posts to \code{/search?lat=\&lon=} on the configured backend. Timeout: 8 seconds. On success the response is also written to Tier 2 for future offline use.
+
+\subsection{Tier 2 --- localStorage Cache}
+
+\file{src/utils/offlineDB.js} stores responses in \code{window.localStorage} keyed by a coarsened coordinate grid:
+
+\begin{lstlisting}[language=JavaScript,caption={offlineDB.js: 24-hour client-side cache}]
+const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function locationKey(lat, lon) {
+  // Round to 2 decimal places (~1.1 km grid)
+  return `roadsos_cache_${lat.toFixed(2)}_${lon.toFixed(2)}`;
+}
+\end{lstlisting}
+
+The grid is 1.1 km square at the equator. A user who searched yesterday from any point within the same square gets a cache hit today. Entries older than the TTL are removed on read.
+
+\subsection{Tier 3 --- Bundled Facilities}
+
+When network requests fail and no cache entry exists, \file{src/utils/bundledFacilities.js} computes the nearest entries from a JSON file shipped in the build bundle: \file{src/data/bundled\_facilities.json} (249 records, 196 countries).
+
+\begin{tabularx}{\textwidth}{l c X}
+\toprule
+\textbf{Region} & \textbf{Records} & \textbf{Notes} \\
+\midrule
+India (deepest) & $\sim$40 & Tamil Nadu + Delhi/Mumbai/Bengaluru/Hyderabad metros \\
+North America & 22 & US trauma centers (Level I + II), Canadian provinces \\
+Europe & 38 & EU member trauma units + UK NHS major centres \\
+East and Southeast Asia & 26 & Japan, China, Korea, Thailand, Vietnam, Indonesia, Philippines, Singapore, Malaysia \\
+Middle East and North Africa & 18 & UAE, Saudi Arabia, Israel, Turkey, Iran, Egypt \\
+Sub-Saharan Africa & 32 & At least one per UN-recognised state \\
+Latin America \& Caribbean & 24 & Brazil/Argentina/Mexico majors plus smaller-nation hospitals \\
+Oceania & 8 & Australia, New Zealand, Pacific island states \\
+\bottomrule
+\end{tabularx}
+
+Search radius starts at 80 km and expands to 600 km if zero results match. Distance is computed by the same haversine formula used server-side, ensuring frontend and backend agree on ordering.
+
+\subsection{Tier 4 --- Mock Data}
+
+If all three tiers above return empty, a hardcoded array of seven Bengaluru-area contacts (App.jsx:41--112) is used as a last visual placeholder. This tier exists so the UI is never blank; in production deployments it would be removed under a build flag.
+
+\subsection{Service Worker}
+
+\file{frontend/public/sw.js} is registered through \code{vite-plugin-pwa} with the \code{injectManifest} strategy. The Workbox configuration includes:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{Precache.} The full app shell (HTML, JS, CSS, fonts) is injected via \code{self.\_\_WB\_MANIFEST} at build time. Total: roughly 670 KiB across six entries.
+  \item \textbf{Runtime cache for /search.} \code{NetworkFirst} with an 8-second timeout, 50-entry LRU, 24-hour max age. After the timeout, the SW serves the most recent cached response for that URL.
+  \item \textbf{Runtime cache for /offline-pack.} \code{CacheFirst} with a single entry and seven-day max age. The backend's offline pack is downloaded once and reused.
+  \item \textbf{skipWaiting() on install.} Critical for live deployments. Without it, a new build would only take effect after the user closed every open tab.
+\end{itemize}
+
+\subsection{Country Emergency Numbers}
+
+Separate from facility lookup, \file{src/utils/emergencyNumbers.js} is a compile-time mapping from ISO-3166 alpha-2 country code to a list of national emergency dial codes. Examples: \code{IN} $\rightarrow$ \code{[108, 100, 101, 112]}, \code{US} $\rightarrow$ \code{[911]}, \code{GB} $\rightarrow$ \code{[999, 112]}, \code{DE} $\rightarrow$ \code{[112, 110]}. The banner at the top of the app renders these in the user's language and is fully offline-capable.
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Frontend: The Real-Time Map}
+% ──────────────────────────────────────────────────────────────────────
+
+\file{frontend/src/components/RealMap.jsx} renders an OpenStreetMap-backed Leaflet map centred on the user's GPS coordinates.
+
+\subsection{Tile Provider}
+
+Tiles are fetched from CartoDB's Dark Matter raster style:
+
+\begin{lstlisting}[language={},numbers=none,frame=none]
+https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png
+\end{lstlisting}
+
+CartoDB serves these tiles free of charge for non-commercial use with attribution. No API key is required. The \code{\{s\}} placeholder distributes across the subdomains \code{a}--\code{d}. The \code{\{r\}} suffix delivers Retina (\code{@2x}) tiles on high-DPI displays.
+
+\subsection{Attribution}
+
+OSM's Open Database License (ODbL) and CartoDB's terms both require visible attribution on derived works. The Leaflet attribution control renders bottom-right:
+
+\begin{lstlisting}[language=HTML,numbers=none,frame=none]
+&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>
+&copy; <a href="https://carto.com/attributions">CARTO</a>
+\end{lstlisting}
+
+\subsection{User Marker}
+
+A custom \code{L.divIcon} draws three concentric layers:
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{Halo.} 110 px radial gradient at 33\% opacity, providing visual mass.
+  \item \textbf{Pulse ring.} 28 px circle animated via \code{@keyframes rs-blip} (2.5 s ease-out infinite).
+  \item \textbf{Dot.} 18 px solid circle with a 3 px white border and a coloured drop-shadow.
+\end{enumerate}
+
+When the GPS signal is older than the freshness threshold, the colour shifts from green (\code{\#22C55E}) to grey (\code{\#94A3B8}) and the pulse animation continues at reduced opacity.
+
+\subsection{Service Markers}
+
+Up to six contacts are rendered as map pins using their actual lat/lon coordinates from the search response. Each pin combines:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item A coloured circle (red for medical: hospital, ambulance, fire; blue for police; teal for mechanical: towing, repair, tyre, showroom)
+  \item A category emoji
+  \item A floating chip above with the truncated facility name and distance in kilometres
+\end{itemize}
+
+The map is configured non-interactively in the hero section: \code{dragging}, \code{scrollWheelZoom}, \code{doubleClickZoom}, \code{touchZoom}, \code{boxZoom}, and \code{keyboard} are all disabled. This preserves the SOS button as the primary interaction. A separate full-screen mode (not yet shipped) would enable interaction.
+
+\subsection{Re-Centering}
+
+A child component, \code{MapRecenter}, hooks into \code{useMap()} and calls \code{map.setView()} with a 0.6-second animation whenever the location prop changes. This makes the demo location picker (Bengaluru $\rightarrow$ London $\rightarrow$ Tokyo) glide smoothly across the globe.
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Frontend: Internationalization}
+% ──────────────────────────────────────────────────────────────────────
+
+\file{frontend/src/i18n/} contains 43 translation bundles registered through \code{i18next}.
+
+\subsection{Language Coverage}
+
+\subsubsection{Indian Languages (all 22 Schedule-VIII languages plus English)}
+
+Assamese, Bengali, Bodo, Dogri, English, Gujarati, Hindi, Kannada, Kashmiri, Konkani, Maithili, Malayalam, Manipuri, Marathi, Nepali, Odia, Punjabi, Sanskrit, Santali, Sindhi, Tamil, Telugu, Urdu.
+
+\subsubsection{Global Languages (most-spoken per region)}
+
+Spanish, French, Portuguese, German, Italian, Dutch, Polish, Russian, Ukrainian, Romanian, Greek, Turkish, Arabic, Persian, Hebrew, Swahili, Amharic, Indonesian, Malay, Thai, Vietnamese, Chinese, Japanese, Korean, Filipino.
+
+\subsection{Right-to-Left Support}
+
+Six languages set the document direction to RTL on selection (Arabic, Hebrew, Persian, Urdu, Kashmiri, Sindhi). The handler in \file{src/i18n/index.js}:
+
+\begin{lstlisting}[language=JavaScript,caption={i18n/index.js --- applyDir}]
+function applyDir(code) {
+  const loc = getLocale(code);
+  document.documentElement.lang = loc.bcp47 || code;
+  document.documentElement.dir = loc.dir || 'ltr';
+}
+\end{lstlisting}
+
+\subsection{Selection Logic}
+
+On first launch, the user sees a full-screen modal listing all 43 languages, grouped into ``India'' (22) and ``World'' (21) sections. There is no automatic pre-selection based on GPS country code; the user picks explicitly. The choice is persisted to \code{localStorage['roadsos:lang']} and never re-asked.
+
+If the user dismisses the picker without choosing, the language defaults to:
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item The previous session's choice from \code{localStorage}, if any.
+  \item \code{navigator.language} (first two characters), if a translation bundle exists for it.
+  \item \code{en}.
+\end{enumerate}
+
+\subsection{Translation Coverage}
+
+Each bundle contains approximately 40 translation keys spanning SOS button states, emergency-category labels, location-status messages, action-button labels, crash-alert prompts, and Medical ID form fields. The complete key list is enumerated in \file{src/i18n/en.json} as the canonical reference.
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Frontend: Crash Detection}
+% ──────────────────────────────────────────────────────────────────────
+
+\file{frontend/src/hooks/useLocation.js} fuses two sensor signals to identify a likely crash without requiring dedicated hardware.
+
+\subsection{Signal 1 --- GPS Velocity Collapse}
+
+The hook maintains a rolling buffer of GPS samples (each containing speed in m/s and a timestamp). A velocity collapse is registered when a sample at $\ge$ 25 km/h is followed within 2 seconds by a sample at $\le$ 5 km/h.
+
+\subsection{Signal 2 --- Accelerometer Spike}
+
+A \code{devicemotion} listener tracks \code{accelerationIncludingGravity}. A spike is registered when the magnitude exceeds 3.5 G (34.3 m/s$^2$). On iOS 13 and later, motion permission must be granted by an explicit user gesture; the first tap on the SOS area triggers \code{requestMotionPermission()}.
+
+\subsection{Confirmation Logic}
+
+A crash is reported only if both signals occur within 4 seconds of each other. The two-signal requirement substantially reduces false positives from phone drops (large G spike, no velocity change) and potholes (small velocity change, no sustained G spike).
+
+\subsection{Cooldown}
+
+After firing, the detector enters a 12-second cooldown during which neither signal can re-trigger the alert. This prevents an aftershock or a follow-up impact from doubling notifications.
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Frontend: SOS Dispatch}
+% ──────────────────────────────────────────────────────────────────────
+
+\file{frontend/src/utils/sosDispatch.js} translates a button tap into a native messaging app deep link, choosing the dominant medium per country.
+
+\subsection{WhatsApp-Dominant Countries}
+
+For countries where WhatsApp is the de-facto messaging app, the handler issues \code{window.open('https://wa.me/<phone>?text=<encoded message>')}. The deep link opens WhatsApp (or its web client) pre-filled with:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item The phrase ``Emergency. I need help.''
+  \item GPS coordinates as decimal degrees.
+  \item A Google Maps link with the same coordinates as the query string.
+  \item The reverse-geocoded landmark string, if available.
+\end{itemize}
+
+WhatsApp-dominant set includes IN, BR, GB, NG, ZA, MX, ID, ES, IT, AR, CO, CL, PE, EG, SA, AE, MY, TR, and roughly 70 others. Because \code{wa.me} accepts only one recipient per URL, this path sends to a single contact at a time.
+
+\subsection{SMS-Dominant Countries}
+
+For countries dominated by SMS (US, CA, FR, DE, JP, KR, AU, and most of Northern Europe), the handler issues \code{window.location.href = 'sms:<contact1>,<contact2>,\dots?body=<encoded message>'}. The native SMS composer opens with all configured emergency contacts pre-populated as recipients.
+
+\subsection{Event Telemetry}
+
+After dispatch, the page emits a \code{roadsos:sos-sent} \code{CustomEvent} with details about the recipient and the medium chosen. \file{App.jsx} listens for this event and opens \file{DispatchScreen.jsx} for the post-send confirmation UI. The same event triggers a fire-and-forget \code{POST /dispatch} to the backend for telemetry.
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Backend API Reference}
+% ──────────────────────────────────────────────────────────────────────
+
+\subsection{\texttt{GET /search}}
+
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Parameter} & \textbf{Description} \\
+\midrule
+\code{lat} & Float, WGS-84 latitude, range $[-90, 90]$. Required. \\
+\code{lon} & Float, WGS-84 longitude, range $[-180, 180]$. Required. \\
+\bottomrule
+\end{tabularx}
+
+Returns a JSON object with the shape given in Section~2.5. Rate limit: 30 req/min/IP.
+
+\subsection{\texttt{POST /triage}}
+
+\begin{lstlisting}[language=json,numbers=none,caption={Request body}]
+{
+  "contacts": [<list of contact objects from /search>],
+  "injured": true,
+  "blocking_traffic": false
+}
+\end{lstlisting}
+
+Returns the same contact list, reordered, plus a \code{reason} string of one short sentence. Rate limit: 20 req/min/IP.
+
+\subsection{\texttt{POST /dispatch}}
+
+Telemetry sink. Logs the dispatch event server-side with request ID and returns \code{202 Accepted}. No body validation beyond JSON parsing.
+
+\subsection{\texttt{GET /health}}
+
+Returns \code{\{"status": "ok", "version": "1.x.x", "timestamp": "2026-05-16T..."\}}. Used by uptime monitors and by the frontend's \code{startBackendWarmup()} to wake the Render dyno on app load.
+
+\subsection{\texttt{GET /offline-pack}}
+
+Returns the bundled facility JSON for client-side warm caching. \code{Cache-Control: public, max-age=604800} (7 days).
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Continuous Integration}
+% ──────────────────────────────────────────────────────────────────────
+
+Three GitHub Actions workflows are defined in \file{.github/workflows/}.
+
+\subsection{Frontend CI (\texttt{frontend-ci.yml})}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{Triggers.} \code{push} and \code{pull\_request} against \code{main} when \code{frontend/**} is touched.
+  \item \textbf{Matrix.} Node.js 20 and 22 in parallel.
+  \item \textbf{Steps.} \code{npm ci --legacy-peer-deps} $\rightarrow$ \code{vite build} $\rightarrow$ \code{vitest run}.
+  \item \textbf{Artifact.} The Node-20 job uploads \code{frontend/dist} as a build artifact (7-day retention).
+\end{itemize}
+
+\subsection{Backend CI (\texttt{backend-tests.yml})}
+
+Three jobs run sequentially:
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{lint.} \code{ruff check} (rule set: E, W, F, I, UP, B, C4, SIM) followed by \code{ruff format --check}. Five rules are explicitly ignored: E501 (line length), E402 (intentional \code{load\_dotenv()} ordering), B008 (FastAPI \code{Depends()}), SIM108 (ternary readability), and SIM112 (the \code{Mapsplatformkey} environment variable name is fixed by Render configuration).
+  \item \textbf{startup-check.} Single-step verification that \code{python -c "import main"} succeeds against \code{requirements.txt} with dummy API keys --- catches dependency-chain breakage before tests run.
+  \item \textbf{test.} \code{pytest} on Python 3.11 and 3.12 in parallel. Depends on \code{lint} and \code{startup-check} passing.
+\end{enumerate}
+
+\subsection{PR Guard (\texttt{pr-guard.yml})}
+
+Two jobs run on every pull request against \code{main}:
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{conflict-check.} Attempts a no-commit, no-fast-forward merge of the PR branch against \code{origin/main}. Fails if Git reports \code{CONFLICT}, surfacing the issue before review.
+  \item \textbf{branch-staleness.} Counts commits the PR branch is behind \code{main} via \code{git rev-list --count HEAD..origin/main}. If the count exceeds 30, emits a warning recommending a rebase. This prevents the kind of large-scale merge conflict that arose during the merge of \code{arindam-branch-} into \code{main}.
+\end{enumerate}
+
+\subsection{Branch Protection (Applied at the Repository Level)}
+
+The \code{main} branch enforces:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item Required status checks: Build \& Test (Node 20), Build \& Test (Node 22), pytest (Python 3.11), pytest (Python 3.12), Lint (ruff), App startup check, and Merge conflict check.
+  \item Strict mode: branches must be up to date with \code{main} before merging.
+  \item No force pushes.
+  \item No branch deletions.
+\end{itemize}
+
+\subsection{Test Coverage}
+
+Backend tests are organised by service:
+
+\begin{tabularx}{\textwidth}{l c X}
+\toprule
+\textbf{Test file} & \textbf{LOC} & \textbf{Scope} \\
+\midrule
+\code{test\_search\_service.py} & 63 & deduplication logic: invalid dicts, empty names, case-insensitive name match, phone equality \\
+\code{test\_ai\_triage.py} & 90 & rule-based fallback, JSON schema validation, single- and two-leg priority orderings \\
+\code{test\_overpass.py} & 207 & element parsing, haversine accuracy, proximity dedup, category classification \\
+\code{test\_overpass\_parsing.py} & --- & edge-case element shapes (nwr without center, tags missing) \\
+\code{test\_rate\_limiter.py} & --- & token-bucket refill, \code{X-Forwarded-For} extraction, retry-after header \\
+\code{test\_cache.py} & --- & TTL expiry, LRU eviction, hit/miss statistics \\
+\code{test\_geocoder.py} & --- & ISO country-code validation against the regex \\
+\code{test\_hours\_parser.py} & --- & \code{opening\_hours} parsing: \code{24/7}, day ranges, time ranges, public holidays \\
+\code{test\_phone\_utils.py} & --- & E.164 normalisation, \code{is\_dialable} (3--15 digits), \code{phones\_match} \\
+\code{test\_middleware.py} & --- & request-ID stamping, log line format, error handler 503 response \\
+\bottomrule
+\end{tabularx}
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Deployment}
+% ──────────────────────────────────────────────────────────────────────
+
+\subsection{Backend on Render}
+
+\file{render.yaml} at the repository root defines a single web service:
+
+\begin{lstlisting}[language={},caption={render.yaml}]
+services:
+  - type: web
+    name: roadsos-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY        # required, free at aistudio.google.com
+        sync: false
+      - key: Mapsplatformkey       # optional, comma-separated for multi-key
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.9
+\end{lstlisting}
+
+Free-tier specifics:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item Dyno sleeps after 15 minutes idle; first request triggers a $\sim$30-second cold start.
+  \item No persistent disk (acceptable; all data is upstream or in client browser).
+  \item TLS terminated at edge; backend sees \code{X-Forwarded-For} only.
+\end{itemize}
+
+\code{startBackendWarmup()} in the frontend fires a \code{GET /health} immediately on app mount, paying the cold-start cost before the user runs their first search.
+
+\subsection{Frontend on Vercel}
+
+\file{vercel.json}:
+
+\begin{lstlisting}[language=json,caption={vercel.json}]
+{
+  "version": 2,
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "echo 'install handled in buildCommand'",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+\end{lstlisting}
+
+The single rewrite ensures client-side routes resolve through \code{index.html} (SPA behaviour). Build environment variables:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \code{VITE\_API\_URL} --- e.g.\ \code{https://roadsos-api.onrender.com}
+\end{itemize}
+
+\subsection{Bundle Sizes}
+
+\begin{tabularx}{\textwidth}{l r r}
+\toprule
+\textbf{Asset} & \textbf{Raw} & \textbf{Gzip} \\
+\midrule
+\code{dist/assets/index.js} & 610 KiB & 181 KiB \\
+\code{dist/assets/index.css} & 80 KiB & 18 KiB \\
+\code{dist/sw.js} & 25 KiB & 8 KiB \\
+\code{dist/index.html} & 0.8 KiB & 0.4 KiB \\
+Precache total & --- & $\sim$210 KiB \\
+\bottomrule
+\end{tabularx}
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Observability and Logging}
+% ──────────────────────────────────────────────────────────────────────
+
+\subsection{Request Logging}
+
+Every request emits one structured log line:
+
+\begin{lstlisting}[numbers=none,frame=none]
+2026-05-16T14:32:08Z [INFO] roadsos.request  GET /search 200 1247ms a8f3e9c2
+\end{lstlisting}
+
+Format: timestamp, level, logger, method, path, status, duration in milliseconds, first eight characters of the request ID.
+
+\subsection{Service-Level Logs}
+
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Service} & \textbf{Notable log events} \\
+\midrule
+\code{overpass\_service} & retry attempts (WARN), cache hits (INFO), per-fetch summary (INFO) \\
+\code{googleplaces\_service} & enrichment count per /search (INFO), key rotation (DEBUG) \\
+\code{geocoder} & invalid country code from Nominatim (WARN) \\
+\code{ai\_triage} & API call failure with exception type (WARN), JSON validation failure (WARN) \\
+\code{rate\_limiter} & per-IP throttling events (INFO) \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Suppressed Noise}
+
+\file{logging\_config.py} silences \code{httpx}, \code{httpcore}, and \code{anyio} below WARN level. These otherwise emit a connection-lifecycle line for every internal HTTP call.
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Repository Layout}
+% ──────────────────────────────────────────────────────────────────────
+
+\begin{lstlisting}[language={},numbers=none,frame=none]
+Roadproj/
+|- backend/
+|  |- main.py                    # FastAPI app entry, middleware wiring
+|  |- middleware.py              # RequestID, RequestLog, ErrorHandling
+|  |- logging_config.py          # log format + library noise suppression
+|  |- requirements.txt           # runtime deps (FastAPI, httpx, phonenumbers, ...)
+|  |- requirements-dev.txt       # adds pytest, pytest-asyncio, ruff
+|  |- pytest.ini                 # asyncio_mode = auto, testpaths
+|  |- ruff.toml                  # lint rule set + project ignores
+|  |- services/
+|  |  |- search_service.py       # /search orchestrator (4 phases)
+|  |  |- overpass_service.py     # OSM Overpass client + parser
+|  |  |- googleplaces_service.py # Google Places + multi-key rotation
+|  |  |- geocoder.py             # Nominatim reverse geocode
+|  |  |- ai_triage.py            # Gemini 2.0 Flash + rule fallback
+|  |  |- triage_service.py       # /triage router
+|  |  |- cache.py                # async TTL/LRU cache
+|  |  |- rate_limiter.py         # per-IP token bucket
+|  |  |- phone_utils.py          # phonenumbers wrapper
+|  |  |- hours_parser.py         # OSM opening_hours parser
+|  |  |- health_service.py       # /health endpoint
+|  |  |- dispatch_service.py     # /dispatch telemetry endpoint
+|  |  `- offline_service.py      # /offline-pack endpoint
+|  `- tests/                     # 10 test files, pytest discoverable
+|
+|- frontend/
+|  |- vite.config.js             # Vite + vite-plugin-pwa configuration
+|  |- vitest.config.js           # test runner config
+|  |- public/sw.js               # Workbox service worker source
+|  `- src/
+|     |- App.jsx                 # top-level orchestrator + state machine
+|     |- main.tsx                # ReactDOM root, i18n init
+|     |- final-design.css        # design system: colours, typography, layout
+|     |- components/
+|     |  |- MapHero.jsx          # hero section (map + dock + SOS)
+|     |  |- RealMap.jsx          # Leaflet map + custom markers
+|     |  |- SOSButton.jsx        # SOS dispatch with WhatsApp/SMS routing
+|     |  |- LanguagePicker.jsx   # first-launch 43-language modal
+|     |  |- MedicalIdModal.jsx   # blood type, allergies, contacts
+|     |  |- CrashAlert.jsx       # post-crash confirmation UI
+|     |  |- DispatchScreen.jsx   # post-SOS confirmation UI
+|     |  |- TriageModal.jsx      # injured + blocking questions
+|     |  |- CountryEmergency.jsx # 108/112/911 banner
+|     |  `- ...
+|     |- hooks/
+|     |  |- useLocation.js       # GPS + motion + crash detection
+|     |  `- useNetwork.js        # online/offline status
+|     |- utils/
+|     |  |- overpass.js          # /search client
+|     |  |- googlePlaces.js      # /triage client
+|     |  |- offlineDB.js         # localStorage cache
+|     |  |- bundledFacilities.js # tier-3 fallback search
+|     |  |- emergencyNumbers.js  # country -> dial codes
+|     |  |- sosDispatch.js       # WhatsApp/SMS deeplink builder
+|     |  |- medicalId.js         # on-device emergency-contact storage
+|     |  |- plusCodes.js         # OLC encoder (pure JS, no deps)
+|     |  `- backendWarmup.js     # Render cold-start mitigation
+|     |- i18n/
+|     |  |- index.js             # i18next init + RTL handler
+|     |  |- locales.js           # locale metadata (native, English, dir)
+|     |  |- countryLanguage.js   # ISO country -> language code
+|     |  `- *.json               # 43 translation bundles
+|     `- data/
+|        `- bundled_facilities.json # 249 facilities, 196 countries
+|
+|- docs/
+|  |- ARCHITECTURE.md            # architecture review + ADRs
+|  `- TECHNICAL.tex              # this document
+|
+|- .github/workflows/
+|  |- frontend-ci.yml            # build + test on Node 20, 22
+|  |- backend-tests.yml          # lint + startup + pytest
+|  `- pr-guard.yml               # merge conflict + staleness detection
+|
+|- render.yaml                   # Render service definition
+|- vercel.json                   # Vercel build configuration
+|- LICENSE                       # MIT
+`- README.md                     # human-facing overview
+\end{lstlisting}
+
+% ──────────────────────────────────────────────────────────────────────
+\section{Key Numbers}
+% ──────────────────────────────────────────────────────────────────────
+
+\begin{tabularx}{\textwidth}{X r}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Countries with at least one bundled facility & 196 \\
+Bundled facilities total & 249 \\
+Languages shipped & 43 \\
+Indian Schedule-VIII languages covered & 22 of 22 \\
+RTL languages supported & 6 (Arabic, Persian, Hebrew, Urdu, Kashmiri, Sindhi) \\
+OSM categories queried in parallel & 9 \\
+Overpass mirrors with retry & 3 \\
+Overpass timeout per attempt & 30 s \\
+Default Overpass radius & 5{,}000 m (expands to 10{,}000 m if sparse) \\
+Bundled-fallback radius & 80 km (expands to 600 km if sparse) \\
+Cache TTL --- Overpass / Google / geocode & 1 h / 1 h / 24 h \\
+Cache key granularity & $\sim$11 m (4 decimal places) \\
+localStorage cache TTL & 24 h \\
+localStorage cache grid & $\sim$1.1 km \\
+Rate limit --- /search & 30 req/min/IP \\
+Rate limit --- /triage & 20 req/min/IP \\
+Phone enrichment cap & 6 Place Details calls per /search \\
+Crash detection --- velocity collapse threshold & $\ge$25 km/h $\rightarrow$ $\le$5 km/h within 2 s \\
+Crash detection --- accelerometer threshold & $\ge$3.5 G \\
+Crash detection --- signal alignment window & 4 s \\
+Crash detection --- post-alert cooldown & 12 s \\
+AI model & \code{gemini-2.0-flash} (free tier: 60 RPM / 1500 RPD) \\
+Frontend bundle (gzip) & 181 KiB JS + 18 KiB CSS \\
+Service worker precache entries & 6 ($\sim$210 KiB) \\
+\bottomrule
+\end{tabularx}
+
+\vspace{0.8cm}
+\hrule
+\vspace{0.4cm}
+\small
+\noindent
+\textbf{Document version.} Generated from \code{main} at commit \texttt{f94dc2a}. Re-run after substantive code changes; this is a hand-maintained reference, not auto-generated.
+
+\end{document}

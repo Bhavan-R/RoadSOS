@@ -2,6 +2,7 @@
 
 Sets a long cache header so the Service Worker stores it for a week.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,7 @@ _CACHED: list[dict] | None = None
 def _load_seed() -> list[dict]:
     global _CACHED
     if _CACHED is None:
-        with open(_DATA_PATH, "r", encoding="utf-8") as f:
+        with open(_DATA_PATH, encoding="utf-8") as f:
             _CACHED = json.load(f)
     return _CACHED
 

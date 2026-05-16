@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Signal, Check, Copy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { getEmergencyContacts, buildSosSmsBody } from '../utils/medicalId';
 import { encodePlusCode } from '../utils/plusCodes';
 import { isWaCountry } from '../utils/sosDispatch';
@@ -20,6 +21,7 @@ function smsUrl(phones, body) {
 }
 
 export default function SOSButton({ location, landmark, countryCode, onFirstTap }) {
+  const { t } = useTranslation();
   const [copied,     setCopied]     = useState(false);
   const [sent,       setSent]       = useState(false);
   const [dispatched, setDispatched] = useState(false);
@@ -120,19 +122,19 @@ export default function SOSButton({ location, landmark, countryCode, onFirstTap 
   const channelLabel = preferWA ? 'WhatsApp' : 'SMS';
 
   const btnLabel = sent
-    ? <><Check size={18} strokeWidth={2.5} /> Location Sent</>
+    ? <><Check size={18} strokeWidth={2.5} /> {t('sos.sent')}</>
     : !hasLocation
-      ? <><Signal size={16} strokeWidth={2.2} /> SOS — Waiting for GPS</>
+      ? <><Signal size={16} strokeWidth={2.2} /> {t('sos.waiting')}</>
       : hasContacts
-        ? <><Signal size={16} strokeWidth={2.2} /> SOS → {contactSummary}</>
-        : <><Signal size={16} strokeWidth={2.2} /> SOS — Send Location</>;
+        ? <><Signal size={16} strokeWidth={2.2} /> {t('sos.to_contacts', { name: contactSummary })}</>
+        : <><Signal size={16} strokeWidth={2.2} /> {t('sos.send')}</>;
 
   return (
     <div className="glass-sos-container">
       {/* No-contact nudge */}
       {!hasContacts && hasLocation && !dispatched && (
         <div className="sos-nudge">
-          ⚠️ No emergency contact — add one in <strong>Medical ID</strong> for direct SOS
+          ⚠️ {t('sos.no_contact_warning')}
         </div>
       )}
 
@@ -162,8 +164,8 @@ export default function SOSButton({ location, landmark, countryCode, onFirstTap 
           id="copy-coords-btn"
           className="glass-copy-btn"
           onClick={handleCopyCoords}
-          aria-label="Copy GPS coordinates to clipboard"
-          title="Copy GPS coordinates"
+          aria-label={t('sos.copy_coords')}
+          title={t('sos.copy_coords')}
         >
           {copied
             ? <Check size={18} strokeWidth={2.5} color="#22C55E" />

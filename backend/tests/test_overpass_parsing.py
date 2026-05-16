@@ -4,9 +4,10 @@ The base test suite (test_overpass.py) covers haversine/classify/dedup_by_name.
 This file adds tests for the new hardening: drop-unusable-entries, smart
 dedup, and the proximity-based grouping.
 """
+
 from services.overpass_service import (
-    parse_element,
     _dedupe_smart,
+    parse_element,
 )
 
 
@@ -85,7 +86,7 @@ class TestDedupSmart:
     def test_different_names_close_dedupes(self):
         # Same hospital, two OSM tag variants (node + way), within 50m
         items = [
-            {"name": "Apollo Hospital",     "lat": 12.98000, "lon": 77.60000},
+            {"name": "Apollo Hospital", "lat": 12.98000, "lon": 77.60000},
             {"name": "Apollo Hospital BTM", "lat": 12.98010, "lon": 77.60010},  # ~14 m away
         ]
         result = _dedupe_smart(items)

@@ -207,7 +207,7 @@ Within each tier, contacts are sorted by ascending distance.
 ```json
 {
   "summary": "string — Human-readable dispatch text, ready to read aloud or paste",
-  "source":  "enum   — 'ai' (Claude-generated) or 'template' (rule-based fallback)"
+  "source":  "enum   — 'ai' (Gemini-generated) or 'template' (rule-based fallback)"
 }
 ```
 
@@ -225,7 +225,7 @@ Within each tier, contacts are sorted by ascending distance.
   "status":         "string — 'ok' when service is up",
   "uptime_seconds": "integer — Seconds since process start",
   "configured": {
-    "anthropic":     "boolean — Claude API key present",
+    "gemini":        "boolean — Gemini API key present",
     "google_places": "boolean — Google Places API key present"
   },
   "cache": {

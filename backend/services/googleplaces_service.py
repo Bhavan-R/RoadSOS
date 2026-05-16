@@ -7,13 +7,13 @@ phone number (the Nearby endpoint does not return phones).
 Costs money beyond the free tier. Capped to top 5 places per type per call to
 control spend during the hackathon.
 """
+
 from __future__ import annotations
 
 import itertools
 import logging
 import math
 import os
-from typing import Optional
 
 import httpx
 
@@ -26,6 +26,7 @@ NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 FINDPLACE_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
 
+
 # ─── Key rotation ────────────────────────────────────────────────────────────
 # Set Mapsplatformkey as a comma-separated list of keys on Render to
 # distribute load across multiple billing accounts.
@@ -37,14 +38,17 @@ def _load_keys() -> list[str]:
         keys = [single] if single else []
     return keys
 
+
 _KEY_POOL: list[str] = _load_keys()
 _key_cycle = itertools.cycle(_KEY_POOL) if _KEY_POOL else None
+
 
 def _next_key() -> str:
     """Round-robin across all configured API keys."""
     if not _KEY_POOL:
         return ""
     return next(_key_cycle)  # type: ignore[arg-type]
+
 
 SEARCH_TYPES = ["hospital", "police", "car_repair", "fire_station"]
 
@@ -61,24 +65,33 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6371.0
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    )
     return R * 2 * math.asin(math.sqrt(a))
 
 
-def map_google_types(types: list[str]) -> Optional[str]:
+def map_google_types(types: list[str]) -> str | None:
     for t in types:
         if t in TYPE_CATEGORY_MAP:
             return TYPE_CATEGORY_MAP[t]
     return None
 
 
-async def _get_place_details(client: httpx.AsyncClient, place_id: str, api_key: str, region: Optional[str]) -> dict:
+async def _get_place_details(
+    client: httpx.AsyncClient, place_id: str, api_key: str, region: str | None
+) -> dict:
     try:
-        resp = await client.get(DETAILS_URL, params={
-            "place_id": place_id,
-            "fields": "formatted_phone_number,opening_hours",
-            "key": api_key,
-        }, timeout=10.0)
+        resp = await client.get(
+            DETAILS_URL,
+            params={
+                "place_id": place_id,
+                "fields": "formatted_phone_number,opening_hours",
+                "key": api_key,
+            },
+            timeout=10.0,
+        )
         result = resp.json().get("result", {})
         return {
             "phone": normalize_phone(result.get("formatted_phone_number"), default_region=region),
@@ -94,8 +107,8 @@ async def enrich_phone_for_contact(
     lat: float,
     lon: float,
     api_key: str,
-    region: Optional[str],
-) -> Optional[str]:
+    region: str | None,
+) -> str | None:
     """Find a phone number for an existing contact by name + location.
 
     Strategy:
@@ -105,13 +118,17 @@ async def enrich_phone_for_contact(
     """
     # ── Step 1: name-based lookup ────────────────────────────────────────
     try:
-        resp = await client.get(FINDPLACE_URL, params={
-            "input": name,
-            "inputtype": "textquery",
-            "locationbias": f"circle:500@{lat},{lon}",
-            "fields": "place_id",
-            "key": api_key,
-        }, timeout=8.0)
+        resp = await client.get(
+            FINDPLACE_URL,
+            params={
+                "input": name,
+                "inputtype": "textquery",
+                "locationbias": f"circle:500@{lat},{lon}",
+                "fields": "place_id",
+                "key": api_key,
+            },
+            timeout=8.0,
+        )
         candidates = resp.json().get("candidates", [])
         if candidates:
             place_id = candidates[0].get("place_id")
@@ -124,11 +141,15 @@ async def enrich_phone_for_contact(
 
     # ── Step 2: coordinate-based fallback (handles OSM name typos) ──────
     try:
-        resp = await client.get(NEARBY_URL, params={
-            "location": f"{lat},{lon}",
-            "radius": 100,          # 100 m — very tight, same building
-            "key": api_key,
-        }, timeout=8.0)
+        resp = await client.get(
+            NEARBY_URL,
+            params={
+                "location": f"{lat},{lon}",
+                "radius": 100,  # 100 m — very tight, same building
+                "key": api_key,
+            },
+            timeout=8.0,
+        )
         places = resp.json().get("results", [])
         for place in places:
             place_id = place.get("place_id")
@@ -144,7 +165,7 @@ async def enrich_phone_for_contact(
 
 async def enrich_missing_phones(
     contacts: list[dict],
-    region: Optional[str],
+    region: str | None,
     max_lookups: int = 6,
 ) -> list[dict]:
     """Look up missing phone numbers for the top contacts via Google.
@@ -182,7 +203,9 @@ async def enrich_missing_phones(
     return contacts
 
 
-async def search_nearby_places(lat: float, lon: float, radius: int = 5000, region: Optional[str] = None) -> list[dict]:
+async def search_nearby_places(
+    lat: float, lon: float, radius: int = 5000, region: str | None = None
+) -> list[dict]:
     api_key = _next_key()
     if not api_key:
         return []
@@ -199,12 +222,15 @@ async def search_nearby_places(lat: float, lon: float, radius: int = 5000, regio
     async with httpx.AsyncClient(timeout=20.0) as client:
         for place_type in SEARCH_TYPES:
             try:
-                resp = await client.get(NEARBY_URL, params={
-                    "location": f"{lat},{lon}",
-                    "radius": radius,
-                    "type": place_type,
-                    "key": api_key,
-                })
+                resp = await client.get(
+                    NEARBY_URL,
+                    params={
+                        "location": f"{lat},{lon}",
+                        "radius": radius,
+                        "type": place_type,
+                        "key": api_key,
+                    },
+                )
                 places = resp.json().get("results", [])[:5]
             except Exception as exc:
                 logger.warning(f"Google Places nearby query failed for {place_type}: {exc}")
@@ -223,18 +249,20 @@ async def search_nearby_places(lat: float, lon: float, radius: int = 5000, regio
                 loc = place["geometry"]["location"]
                 details = await _get_place_details(client, place_id, api_key, region)
 
-                results.append({
-                    "id": f"gp_{place_id}",
-                    "name": place.get("name", "Unknown"),
-                    "category": category,
-                    "phone": details["phone"],
-                    "distance": round(haversine(lat, lon, loc["lat"], loc["lng"]), 2),
-                    "lat": loc["lat"],
-                    "lon": loc["lng"],
-                    "source": "Google Places",
-                    "isOpen": details["isOpen"],
-                    "aiReason": None,
-                })
+                results.append(
+                    {
+                        "id": f"gp_{place_id}",
+                        "name": place.get("name", "Unknown"),
+                        "category": category,
+                        "phone": details["phone"],
+                        "distance": round(haversine(lat, lon, loc["lat"], loc["lng"]), 2),
+                        "lat": loc["lat"],
+                        "lon": loc["lng"],
+                        "source": "Google Places",
+                        "isOpen": details["isOpen"],
+                        "aiReason": None,
+                    }
+                )
 
     sorted_results = sorted(results, key=lambda x: x["distance"])
     await google_cache.set(cache_key, sorted_results)

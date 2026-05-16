@@ -6,14 +6,15 @@ OSM data contains phone numbers in many formats: "+91 80 26303050", "080-2630305
 For the `tel:` link to work reliably we need a single, clean number. We also want
 to dedupe contacts that share a phone in different formattings.
 """
+
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 try:
     import phonenumbers
     from phonenumbers import NumberParseException, PhoneNumberFormat
+
     _HAS_PN = True
 except ImportError:
     _HAS_PN = False
@@ -23,7 +24,7 @@ _EXT_RE = re.compile(r"\s*(?:ext|extension|x)\.?\s*\d+.*$", re.IGNORECASE)
 _BASIC_CLEAN_RE = re.compile(r"[^\d+]")
 
 
-def normalize_phone(raw: Optional[str], default_region: Optional[str] = None) -> Optional[str]:
+def normalize_phone(raw: str | None, default_region: str | None = None) -> str | None:
     """Return a clean, dialable phone string, or None if input is empty.
 
     If `phonenumbers` is installed and the input parses to a valid number, we
@@ -52,7 +53,7 @@ def normalize_phone(raw: Optional[str], default_region: Optional[str] = None) ->
     return fallback or None
 
 
-def to_tel_href(phone: Optional[str]) -> Optional[str]:
+def to_tel_href(phone: str | None) -> str | None:
     """Build a tel: URI value (no spaces, plus prefix preserved)."""
     if not phone:
         return None
@@ -60,7 +61,7 @@ def to_tel_href(phone: Optional[str]) -> Optional[str]:
     return digits or None
 
 
-def is_dialable(phone: Optional[str]) -> bool:
+def is_dialable(phone: str | None) -> bool:
     """Heuristic check that a phone string is plausible to dial.
 
     Range 3-15 digits per ITU-T E.164. Short 3-4 digit numbers are kept
@@ -73,7 +74,7 @@ def is_dialable(phone: Optional[str]) -> bool:
     return 3 <= len(digits) <= 15
 
 
-def phones_match(a: Optional[str], b: Optional[str]) -> bool:
+def phones_match(a: str | None, b: str | None) -> bool:
     """Two phone strings match if their dialable digits match (last 10 digits)."""
     if not a or not b:
         return False

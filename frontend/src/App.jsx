@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { WifiOff, ChevronDown, AlertTriangle } from 'lucide-react';
 import { useLocation } from './hooks/useLocation';
 import { useNetwork } from './hooks/useNetwork';
@@ -21,6 +22,8 @@ import RoutePlanner from './components/RoutePlanner';
 import MedicalIdModal from './components/MedicalIdModal';
 import MapHero from './components/MapHero';
 import DispatchScreen from './components/DispatchScreen';
+import LanguagePicker from './components/LanguagePicker';
+import { hasUserChosenLanguage } from './i18n';
 import { requestMotionPermission } from './hooks/useLocation';
 import { DEMO_MODE } from './utils/demoMode';
 import { startBackendWarmup } from './utils/backendWarmup';
@@ -130,11 +133,16 @@ function markOnboarded() {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
+  const { t } = useTranslation();
+  const [langPickerOpen, setLangPickerOpen] = useState(() => !hasUserChosenLanguage());
   const [demoIdx, setDemoIdx] = useState(0);
   const [crashOpen, setCrashOpen] = useState(false);
   const [cat, setCat] = useState("All");
   const [routePlannerOpen, setRoutePlannerOpen] = useState(false);
-  const [medicalOpen, setMedicalOpen] = useState(() => isFirstLaunch());
+  // Show Medical ID only AFTER the user picks a language on first launch.
+  const [medicalOpen, setMedicalOpen] = useState(
+    () => !hasUserChosenLanguage() ? false : isFirstLaunch(),
+  );
   const [medicalIdConfigured, setMedicalIdConfigured] = useState(() => hasMedicalId());
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [dispatchedAt, setDispatchedAt] = useState(null);
@@ -254,6 +262,7 @@ export default function App() {
     if (!searchData?.contacts?.length) return;
     setTriageLoading(true);
     try {
+      // triageContacts never throws — it falls back to client-side rules offline
       const result = await triageContacts(injured, blocking, searchData.contacts);
       setSearchData(prev => ({ ...prev, contacts: result.contacts, reason: result.reason }));
       setTriaged(true);
@@ -265,7 +274,7 @@ export default function App() {
         }));
       }
     } catch {
-      // Backend triage failed — leave contacts in current order, still close modal
+      // Should never reach here, but defensive just in case
     } finally {
       setTriageLoading(false);
       setTriageOpen(false);
@@ -286,6 +295,17 @@ export default function App() {
 
   return (
     <div className="app has-map-hero">
+
+      {/* ── First-launch language picker (gates Medical ID) ── */}
+      {langPickerOpen && (
+        <LanguagePicker
+          onConfirm={() => {
+            setLangPickerOpen(false);
+            // After language chosen, open Medical ID on first launch
+            if (isFirstLaunch()) setMedicalOpen(true);
+          }}
+        />
+      )}
 
       {/* ── Map-anchored Hero (replaces old telemetry header + SOS section) ── */}
       <MapHero
@@ -400,17 +420,19 @@ export default function App() {
 
       {/* ── National Emergency ── */}
       <div className="sec-head">
-        <span className="sec-title">Emergency Numbers</span>
-        <span className="sec-note">Always offline</span>
+        <span className="sec-title">{t('header.emergency_numbers')}</span>
+        <span className="sec-note">{t('header.always_offline')}</span>
       </div>
       <CountryEmergency numbers={numbers} />
 
       {/* ── Nearby Services ── */}
       <div id="nearby-services" className="sec-head" style={{ paddingTop: 22 }}>
-        <span className="sec-title">Nearby Services</span>
+        <span className="sec-title">{t('header.nearby_services')}</span>
         <span className="sec-note">
-          {searchLoading ? 'Searching...' : `${searchData?.count ?? searchData?.contacts?.length ?? 0} found`}
-          {triaged && (triageOffline ? ' ⚡ Prioritised' : ' ✨ AI')}
+          {searchLoading
+            ? t('header.searching')
+            : t('header.found', { n: searchData?.count ?? searchData?.contacts?.length ?? 0 })}
+          {triaged && (triageOffline ? ` ⚡ ${t('header.prioritised')}` : ` ✨ ${t('header.ai')}`)}
         </span>
       </div>
 
@@ -421,9 +443,9 @@ export default function App() {
           className="triage-trigger-btn"
           onClick={() => setTriageOpen(true)}
           id="open-triage-btn"
-          title="Tell us if anyone is injured or the vehicle is blocking traffic — we'll reorder by priority"
+          title={t('actions.prioritise')}
         >
-          🤖 Prioritise for my situation
+          🤖 {t('actions.prioritise')}
         </button>
       )}
       {triaged && (
@@ -432,7 +454,7 @@ export default function App() {
           className="triage-trigger-btn triage-trigger-btn--redo"
           onClick={() => setTriageOpen(true)}
         >
-          🔄 Re-prioritise
+          🔄 {t('actions.re_prioritise')}
         </button>
       )}
 
@@ -450,7 +472,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "flex-start", gap: 7, padding: "14px 20px 0", opacity: 0.5 }}>
           <WifiOff size={12} color="#334E6E" strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 1 }} />
           <span style={{ fontSize: 11, color: "#1E3655", lineHeight: 1.6 }}>
-            {searchError || 'Could not reach server — showing demo data. Emergency numbers always work offline.'}
+            {searchError || t('footer.offline_fallback')}
           </span>
         </div>
       )}

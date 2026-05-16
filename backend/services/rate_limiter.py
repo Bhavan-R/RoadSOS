@@ -1,12 +1,13 @@
 """Per-IP in-memory token-bucket rate limiter.
 
-Protects /search and /triage from abuse. A judge running automated load
-testing or a single malicious user cannot exhaust the Overpass quota or
-the Anthropic budget.
+Protects /search and /triage from abuse. Automated load testing or a
+single malicious user cannot exhaust the Overpass quota or the Gemini
+free-tier rate limits.
 
 Why in-memory: a hackathon backend on Render's free tier has one process.
 No need for Redis. If we ever scale horizontally, swap to slowapi+Redis.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -41,9 +42,7 @@ class RateLimiter:
             bucket = self._buckets[client_ip]
             now = time.monotonic()
             elapsed = now - bucket.last_refill
-            bucket.tokens = min(
-                float(self.burst), bucket.tokens + elapsed * self.rate_per_sec
-            )
+            bucket.tokens = min(float(self.burst), bucket.tokens + elapsed * self.rate_per_sec)
             bucket.last_refill = now
             if bucket.tokens < 1.0:
                 retry_after = int((1.0 - bucket.tokens) / self.rate_per_sec) + 1

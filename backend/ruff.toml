@@ -1,0 +1,29 @@
+# Ruff config for RoadSOS backend
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes (undefined names, unused imports)
+  "I",   # isort (import ordering)
+  "UP",  # pyupgrade (modern Python syntax)
+  "B",   # flake8-bugbear (common bugs)
+  "C4",  # flake8-comprehensions (cleaner list/dict comps)
+  "SIM", # flake8-simplify
+]
+ignore = [
+  "E501",   # line too long (handled by formatter)
+  "E402",   # module import not at top — intentional: load_dotenv() must run before service imports
+  "B008",   # function call in default argument — FastAPI Depends() pattern
+  "SIM108", # ternary operator — can harm readability
+  "SIM112", # env var casing — Render uses `Mapsplatformkey` (mixed-case), cannot rename
+]
+
+[lint.isort]
+known-first-party = ["services"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

@@ -17,7 +17,7 @@
 [![Vite](https://img.shields.io/badge/Vite-8.0-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Anthropic](https://img.shields.io/badge/Anthropic-Claude%20Haiku%204.5-d97757)](https://www.anthropic.com/)
+[![Gemini](https://img.shields.io/badge/Google-Gemini%202.0%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/gemini-api)
 [![OSM](https://img.shields.io/badge/Data-OpenStreetMap-7EBC6F?logo=openstreetmap&logoColor=white)](https://www.openstreetmap.org/)
 
 [![Backend Tests](https://github.com/Arthrevs/Roadproj/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/Arthrevs/Roadproj/actions/workflows/backend-tests.yml)
@@ -25,7 +25,7 @@
 [![Categories](https://img.shields.io/badge/Service%20Types-8-9b59b6?style=flat-square)](#-features)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-**[🎯 Problem](#-the-problem) · [⚡ Features](#-features) · [🏗 Architecture](#-architecture) · [🚀 Quick Start](#-quick-start) · [🎤 Demo Script](#-demo-script-for-judges) · [🛡 What We Did Not Build](#-what-we-deliberately-did-not-build) · [🗺 Roadmap](#-roadmap)**
+**[🎯 Problem](#-the-problem) · [⚡ Features](#-features) · [🏗 Architecture](#-architecture) · [🚀 Quick Start](#-quick-start) · [🎤 Walkthrough](#-three-minute-walkthrough) · [📊 Capabilities](#-capabilities-summary) · [🗺 Roadmap](#-roadmap) · [📘 Docs](docs/)**
 
 </div>
 
@@ -72,8 +72,8 @@ Two simple questions — *injured? blocking traffic?* — and an LLM reorders th
 <tr>
 <td>
 
-### 📶 Genuinely Offline (5-layer)
-Service Worker + localStorage + **Plan-a-Trip pre-cache** + **bundled 28-facility trauma directory** + bundled 196-country national numbers. Pre-fetch hospitals along Chennai→Bengaluru before you leave, then crash anywhere on NH-44 — the right number is still there.
+### 📶 Genuinely Offline (4-tier)
+Service Worker + localStorage (24h TTL, ~1.1km grid) + **bundled 249-facility directory across all 196 countries** + bundled 196-country national emergency numbers. Pre-fetch hospitals along Chennai→Bengaluru before you leave, then crash anywhere on NH-44 — the right number is still there.
 
 ### 🆔 Emergency Medical ID
 Stores blood type, allergies, conditions, medications, and an emergency contact entirely on-device (localStorage — **nothing ever leaves the phone**). A first responder arriving at a crash scene can tap the persistent **🆔 Medical ID** button on the home screen to see this in a high-contrast paramedic-friendly card.
@@ -89,6 +89,12 @@ When voice fails but SMS still works (very common in cellular dead zones), the c
 
 ### 🌍 Globally Aware
 Reverse-geocode-based country detection. Drive across the India–Nepal border and the emergency numbers switch from `108/100/101` to `102/100/101` automatically.
+
+### 🌐 43 Languages, 6 RTL
+All 22 official Indian languages (Schedule VIII) plus 21 global languages covering every UN region. RTL layout for Arabic, Persian, Hebrew, Urdu, Kashmiri, and Sindhi. First-launch picker requires manual selection — no surveillance-style auto-detection from GPS.
+
+### 🗺 Real GPS-Anchored Map
+Leaflet + OpenStreetMap (CartoDB Dark Matter tiles, no API key, free). Your actual surroundings — not a stock illustration. Up to six nearest contacts pinned at their real lat/lon with category-coloured markers (red = medical, blue = police, teal = mechanical).
 
 </td>
 </tr>
@@ -158,11 +164,11 @@ Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within 
 │   └─ Phone enrichment   ──── top-6 phoneless via Place Details │
 │                                                               │
 │  POST /triage                                                 │
-│   ├─ Anthropic Claude Haiku 4.5  ─── situation-aware sort    │
+│   ├─ Google Gemini 2.0 Flash    ─── situation-aware sort    │
 │   └─ Rule-based fallback         ─── if API down             │
 │                                                               │
 │  POST /dispatch-summary                                       │
-│   ├─ Claude Haiku  ─── human-readable accident description    │
+│   ├─ Gemini Flash  ─── human-readable accident description    │
 │   └─ Template fallback ── if API unavailable                  │
 │                                                               │
 │  GET /health                                                  │
@@ -191,29 +197,35 @@ Detects a collapse from highway speed (>25 km/h) to standstill (<5 km/h) within 
 
 4. TriageModal asks: injured? blocking?
    └─► POST /triage with answers + contacts
-       └─► Claude reorders, returns one-line reason
+       └─► Gemini reorders, returns one-line reason
        └─► If API fails: rule-based fallback produces same shape
 
 5. ContactList renders with AI reason banner on top card
    SOSButton ready with pre-filled WhatsApp message
 ```
 
-### 🔌 Offline Architecture
+### 🔌 Offline Architecture (4-Tier Fallback)
 
 ```
 ONLINE                                    OFFLINE
 ──────                                    ───────
-GET /search ─────► Service Worker         ► Service Worker checks cache
-                   │                        │
-                   ├─ Cache (NetworkFirst)  ├─ Returns cached results
-                   └─ Forward to backend    │
-                                            ├─ App reads localStorage
-                                            │  (24hr TTL, ~1km grid)
-                                            │
-                                            └─ CountryEmergency banner
-                                               always shows correct
-                                               national numbers from
-                                               bundled JS (no fetch)
+GET /search ─────► Service Worker         Tier 1: Backend /search
+                   │                              └─ unreachable
+                   ├─ Cache (NetworkFirst,
+                   │  8s timeout, 24h TTL)  Tier 2: Service Worker
+                   │                              + localStorage cache
+                   └─ Forward to backend          (24h TTL, ~1.1km grid)
+                                                  └─ no entry for this grid
+
+                                          Tier 3: Bundled JSON
+                                                  (249 facilities across
+                                                  196 countries, haversine
+                                                  search, 80km → 600km
+                                                  radius expansion)
+
+                                          Always: CountryEmergency banner
+                                                  (national numbers,
+                                                  no network ever)
 ```
 
 ---
@@ -224,13 +236,17 @@ GET /search ─────► Service Worker         ► Service Worker checks 
 
 | Layer | Technology | Why |
 |---|---|---|
-| **Frontend** | React 18 + Vite + vite-plugin-pwa | Fast HMR, native PWA support, mobile-first |
-| **Backend** | FastAPI + httpx (async) | Async I/O for parallel API calls, type-safe |
-| **AI Triage** | Anthropic Claude Haiku 4.5 | Lowest-latency model on the Claude API — fits emergency-time SLAs |
-| **Location Data** | OpenStreetMap Overpass + Google Places | OSM is free + global; Places fills India sparse-data gaps |
-| **Geocoding** | Nominatim (OSM) | Free, no API key, returns ISO country code |
-| **Offline Cache** | Workbox Service Worker + localStorage | Two-layer cache: network responses + UI state |
-| **Hosting** | Vercel (frontend) + Render (backend) | Free tier sufficient for demo; auto-deploy from GitHub |
+| **Frontend** | React 18.3 + Vite 8 + vite-plugin-pwa 1.3 | Fast HMR, native PWA support, mobile-first |
+| **Map** | Leaflet 1.9 + react-leaflet 4.2 + CartoDB Dark tiles | Real OSM map, no API key, dark theme matches UI |
+| **i18n** | i18next 26 + react-i18next 17 | 43 languages, RTL support, browser-detect fallback |
+| **Backend** | FastAPI 0.115 + httpx 0.27 (async) | Async I/O for parallel upstream calls, type-safe |
+| **AI Triage** | Google Gemini 2.0 Flash (REST, no SDK) | Free tier — 60 RPM / 1500 RPD, no billing required; deterministic rule-based fallback |
+| **Location Data** | OpenStreetMap Overpass + Google Places | OSM is free + global; Places fills sparse regions and enriches phones |
+| **Geocoding** | Nominatim (OSM) | Free, no API key, returns ISO-3166 country code |
+| **Offline Cache** | Workbox 7 SW + localStorage + bundled JSON | 4-tier: network → cache → bundled facilities → mock |
+| **Lint** | ruff 0.11 (backend), Vitest (frontend tests) | Single fast tool for E/W/F/I/UP/B/C4/SIM rules |
+| **CI** | GitHub Actions × 3 workflows | Build/test on Node 20+22, pytest on Py 3.11+3.12, PR conflict detection |
+| **Hosting** | Vercel (frontend) + Render (backend) | Free tier; auto-deploy from `main` |
 
 </div>
 
@@ -241,66 +257,80 @@ GET /search ─────► Service Worker         ► Service Worker checks 
 ```
 Roadproj/
 ├── backend/                          # FastAPI service
-│   ├── main.py                       # App entry, router registration, CORS
-│   ├── requirements.txt
-│   ├── .env.example                  # ANTHROPIC_API_KEY, GOOGLE_PLACES_API_KEY
-│   ├── data/
-│   │   └── emergency_seed.json       # 196 countries × 4 numbers (police, ambulance, fire, general)
+│   ├── main.py                       # App entry, middleware stack, CORS
+│   ├── middleware.py                 # RequestID, RequestLog, ErrorHandling
+│   ├── logging_config.py             # log format + library noise suppression
+│   ├── requirements.txt              # FastAPI, httpx, phonenumbers, ...
+│   ├── requirements-dev.txt          # pytest, pytest-asyncio, ruff
+│   ├── pytest.ini
+│   ├── ruff.toml                     # Lint rule set: E, W, F, I, UP, B, C4, SIM
+│   ├── .env.example                  # GEMINI_API_KEY, Mapsplatformkey
 │   └── services/
-│       ├── overpass_service.py       # OSM Overpass QL builder + parser + Haversine sort
-│       ├── googleplaces_service.py   # Nearby Search + Place Details fallback
-│       ├── geocoder.py               # Nominatim reverse geocode → landmark + country ISO
-│       ├── ai_triage.py              # Anthropic SDK + rule-based fallback
-│       ├── cache.py                  # In-memory TTL cache (Overpass / Google / geocode)
-│       ├── phone_utils.py            # E.164 normalization via phonenumbers library
+│       ├── search_service.py         # GET /search 4-phase orchestrator
+│       ├── overpass_service.py       # OSM Overpass QL + 3-mirror retry + haversine
+│       ├── googleplaces_service.py   # Nearby Search + Place Details + multi-key rotation
+│       ├── geocoder.py               # Nominatim reverse-geocode → landmark + ISO code
+│       ├── ai_triage.py              # Gemini 2.0 Flash + 4-rule deterministic fallback
+│       ├── cache.py                  # Async TTL/LRU cache (3 module singletons)
+│       ├── rate_limiter.py           # Per-IP token bucket, X-Forwarded-For aware
+│       ├── phone_utils.py            # phonenumbers wrapper (normalise, match)
 │       ├── hours_parser.py           # OSM opening_hours → isOpen bool
-│       ├── search_service.py         # GET /search orchestrator
 │       ├── triage_service.py         # POST /triage router
-│       ├── dispatch_service.py       # POST /dispatch-summary router
+│       ├── dispatch_service.py       # POST /dispatch telemetry sink
 │       ├── health_service.py         # GET /health router
 │       └── offline_service.py        # GET /offline-pack router
-│   ├── tests/                        # Pure unit tests — no API keys or network needed
-│   │   ├── test_overpass.py          # haversine, classify, parse, dedup, query builder
-│   │   ├── test_ai_triage.py         # rule_based_triage all 4 cases + _validate_ai_result
-│   │   ├── test_cache.py             # TTLCache expiry, eviction, stats, location_key
-│   │   ├── test_hours_parser.py      # OSM opening_hours parsing + datetime injection
-│   │   └── test_phone_utils.py       # E.164 normalize, is_dialable, phones_match
-│   ├── pytest.ini
-│   └── requirements-dev.txt
+│   └── tests/                        # 10 test files, pytest discoverable
 │
-├── .github/
-│   └── workflows/
-│       └── backend-tests.yml         # CI: pytest on Python 3.11 + 3.12 on every push
-│
-├── frontend/                         # React PWA
+├── frontend/                         # React 18 + Vite 8 PWA
 │   ├── index.html
-│   ├── vite.config.js                # React + PWA plugins, dev proxy
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── .env.example                  # VITE_API_URL
-│   ├── public/
-│   │   ├── favicon.svg
-│   │   └── sw.js                     # Workbox Service Worker
+│   ├── vite.config.js                # React + vite-plugin-pwa (injectManifest)
+│   ├── vitest.config.js              # test runner config
+│   ├── package.json                  # Deps: leaflet, react-leaflet, i18next, lucide
+│   ├── public/sw.js                  # Workbox service worker source
 │   └── src/
-│       ├── main.tsx                  # React entry
-│       ├── App.jsx                   # Top-level orchestration
-│       ├── style.css                 # Dark theme, mobile-first, 48px+ touch targets
+│       ├── main.tsx                  # React root, i18n init
+│       ├── App.jsx                   # Top-level state + 4-tier fallback orchestration
+│       ├── final-design.css          # Design system, Leaflet overrides, RTL support
 │       ├── components/
-│       │   ├── ContactCard.jsx       # Category badge, AI reason banner, tel: link, data provenance
-│       │   ├── ContactList.jsx       # Loading / empty / error / cached states
+│       │   ├── MapHero.jsx           # Hero section: map + dock + SOS overlay
+│       │   ├── RealMap.jsx           # Leaflet + CartoDB Dark + custom divIcon markers
+│       │   ├── SOSButton.jsx         # WhatsApp/SMS country-aware dispatch
+│       │   ├── LanguagePicker.jsx    # First-launch 43-language modal (no auto-select)
+│       │   ├── MedicalIdModal.jsx    # Blood type, allergies, emergency contacts
+│       │   ├── CrashAlert.jsx        # PIN-cancel safety layer
+│       │   ├── DispatchScreen.jsx    # Post-SOS confirmation UI
+│       │   ├── TriageModal.jsx       # 2-question intake → AI reorder
 │       │   ├── CountryEmergency.jsx  # 4-button always-visible national numbers bar
-│       │   ├── OfflineBanner.jsx     # Network status indicator
-│       │   ├── SOSButton.jsx         # WhatsApp/SMS broadcast + copy-coordinates
-│       │   ├── TriageModal.jsx       # 2-question intake with AI loading state
-│       │   └── CrashAlert.jsx        # PIN-cancel safety layer for crash detection
+│       │   └── ...
 │       ├── hooks/
-│       │   ├── useLocation.js        # GPS + IP fallback + velocity collapse detection
+│       │   ├── useLocation.js        # GPS + IP fallback + crash detection
 │       │   └── useNetwork.js         # Online/offline state
-│       └── utils/
-│           ├── emergencyNumbers.js   # Bundled static 196-country map
-│           ├── offlineDB.js          # localStorage cache, 24hr TTL, ~1km grid
-│           ├── overpass.js           # Wraps GET /search
-│           └── googlePlaces.js       # Wraps POST /triage
+│       ├── utils/
+│       │   ├── overpass.js           # /search client
+│       │   ├── googlePlaces.js       # /triage client
+│       │   ├── offlineDB.js          # localStorage cache, 24h TTL, ~1.1km grid
+│       │   ├── bundledFacilities.js  # Tier-3 fallback: nearest from JSON
+│       │   ├── emergencyNumbers.js   # ISO country → emergency dial codes
+│       │   ├── sosDispatch.js        # WhatsApp/SMS country routing
+│       │   ├── medicalId.js          # On-device emergency-contact storage
+│       │   ├── plusCodes.js          # Open Location Code encoder (pure JS)
+│       │   └── backendWarmup.js      # Render cold-start mitigation
+│       ├── i18n/                     # 43 locales + RTL handler
+│       │   ├── index.js              # i18next init
+│       │   ├── locales.js            # Metadata: native, English, dir, region
+│       │   └── *.json                # 43 translation bundles
+│       └── data/
+│           └── bundled_facilities.json # 249 facilities × 196 countries
+│
+├── docs/                             # Engineering documentation
+│   ├── ARCHITECTURE.md               # System design + ADRs + risk assessment
+│   ├── TECHNICAL.tex                 # LaTeX source for technical reference
+│   └── TECHNICAL.pdf                 # Compiled 21-page PDF
+│
+├── .github/workflows/                # 3 CI workflows
+│   ├── frontend-ci.yml               # Build + Vitest on Node 20 & 22
+│   ├── backend-tests.yml             # ruff lint → app startup → pytest 3.11 & 3.12
+│   └── pr-guard.yml                  # Merge conflict + branch staleness checks
 │
 ├── render.yaml                       # Backend deployment config
 ├── vercel.json                       # Frontend deployment config
@@ -320,7 +350,7 @@ venv\Scripts\activate                 # Windows
 # source venv/bin/activate             # macOS / Linux
 pip install -r requirements.txt
 
-cp .env.example .env                  # set ANTHROPIC_API_KEY (required)
+cp .env.example .env                  # set GEMINI_API_KEY (required, free at aistudio.google.com/apikey)
 uvicorn main:app --reload
 ```
 
@@ -419,7 +449,7 @@ Generates a ready-to-read dispatch text describing the accident — useful for h
 }
 ```
 
-`source` is `"ai"` when Claude generated the text, `"template"` when the rule-based fallback was used.
+`source` is `"ai"` when Gemini generated the text, `"template"` when the rule-based fallback was used.
 
 ---
 
@@ -433,7 +463,7 @@ System health check — useful for uptime monitors and the Render health-check p
   "status": "ok",
   "uptime_seconds": 3821,
   "configured": {
-    "anthropic": true,
+    "gemini": true,
     "google_places": false
   },
   "cache": {
@@ -473,19 +503,21 @@ The complete database is in `backend/data/emergency_seed.json`. The file is the 
 
 ---
 
-## 🎤 Demo Script (For Judges)
+## 🎤 Three-Minute Walkthrough
 
-A rehearsed three-minute narrative that hits every evaluation criterion:
+A reproducible demo path that exercises every major capability:
 
-| Time | Action | Criterion Demonstrated |
+| Time | Action | What you should see |
 |---|---|---|
-| 0:00 | Open Google Maps in another tab, search *"hospital near me"* — count the seconds out loud | Establishes baseline (the problem) |
-| 0:30 | Open RoadSOS — national emergency numbers visible at top instantly | **Reliability**, **information integration** |
-| 0:45 | Answer triage questions — show the AI reason banner appearing on the top contact | **Innovation**, **AI usage** |
-| 1:15 | **Turn off WiFi live.** Reload. Cached results still show. National numbers still work. | **Offline functionality** |
-| 1:45 | Open the demo-location picker. Switch to London. Numbers change to 999 instantly. Tokyo → 119. Berlin → 110/112. | **Information integration across countries** |
-| 2:30 | Tap SOS Broadcast — WhatsApp opens with pre-filled message containing coords + landmark + top contact | **Innovation, real-world usability** |
-| 2:50 | Count contacts on screen vs Google Maps results | **Number of contacts fetched** |
+| 0:00 | Open Google Maps in another tab, search *"hospital near me"* | Baseline: 2–3 minutes of scrolling before a useful number appears |
+| 0:30 | Open RoadSOS | National emergency numbers banner renders instantly from bundled data |
+| 0:40 | Pick a language from the 43-language modal | UI re-renders in the chosen language; RTL languages flip layout |
+| 0:55 | Real Leaflet map centres on your GPS position | Up to 6 nearest contacts pinned at their real lat/lon |
+| 1:10 | Answer triage questions (injured? blocking?) | Top card carries a one-sentence AI reason explaining its priority |
+| 1:40 | **Turn off WiFi live.** Reload | Cached results still render; banner stays online; map markers persist |
+| 2:00 | Open the demo-location picker. Switch to London → Tokyo → Berlin | Numbers change to 999 → 119 → 110/112; map glides to each city |
+| 2:30 | Tap SOS | WhatsApp (in WhatsApp-dominant countries) or SMS (elsewhere) opens with coordinates + landmark + top contact pre-filled |
+| 2:50 | Count contacts vs the Google Maps tab | Single-screen list of categorised, phoned contacts vs scrolling through generic results |
 
 ---
 
@@ -496,7 +528,7 @@ Every item here was considered, prototyped on paper, and rejected for a specific
 | Feature | Why We Dropped It |
 |---|---|
 | **Accelerometer crash detection** | Phone-drop forces (~40 m/s²) overlap with serious crash forces (20–80 m/s²) and large potholes (15–30 m/s²). Apple still gets false positives on roller coasters with dedicated hardware. Indian highways have continuous pothole jerks — false positive rate would make the app unusable. |
-| **Vehicle ECU / Smartcar integration** | India's connected-car API coverage is near zero. A demo would be a simulated mock that judges would see through. The evaluation criteria do not include crash detection. |
+| **Vehicle ECU / Smartcar integration** | India's connected-car API coverage is near zero. Any demo would be a simulated mock. Out of scope for a phone-only PWA. |
 | **Background passive monitoring** | iOS restricts background processes at the OS level. A significant portion of Indian users are on iPhones. A feature that does not work on iOS is not a feature. |
 | **Real-time ambulance tracking** | Requires formal API agreements with dispatch services and live telemetry from ambulance vehicles. Not achievable in three weeks. |
 | **User accounts / login** | Adds friction in an emergency. The worst possible moment to ask someone to log in is at a crash scene. |
@@ -533,7 +565,7 @@ Every item here was considered, prototyped on paper, and rejected for a specific
 1. **New → Blueprint**
 2. Connect this repository
 3. Set environment variables:
-   - `ANTHROPIC_API_KEY` (required)
+   - `GEMINI_API_KEY` (required — free at https://aistudio.google.com/apikey)
    - `GOOGLE_PLACES_API_KEY` (optional)
 4. Deploy
 
@@ -548,17 +580,19 @@ Every item here was considered, prototyped on paper, and rejected for a specific
 
 ---
 
-## 📊 Evaluation Score Card
+## 📊 Capabilities Summary
 
-The hackathon scores submissions on five criteria. Here is how RoadSOS addresses each:
-
-| Criterion | How RoadSOS Scores |
+| Capability | Implementation |
 |---|---|
-| **Reliability & data accuracy** | Dual-source (OSM + Google Places fired in **parallel**) with provenance badge on every card. `tel:` links use raw E.164-normalised phone numbers. 4-layer fallback: Overpass mirrors → Google Places → bundled MOCK_DATA → national numbers always visible. |
-| **Number of contacts fetched** | Eight OSM categories + four Google categories queried in parallel. Auto-expand from 5km → 10km radius. Top-6 phoneless contacts get a Google Place Details lookup for missing phones. Typical urban query: 10–15 contacts. |
-| **Offline functionality** | **Five-layer offline cache** designed for highway dead zones: (1) Workbox Service Worker, (2) localStorage app cache, (3) **🆕 Route pre-cache** — user picks origin+destination *before* leaving home, app pulls the OSRM driving polyline, samples 6 waypoints and seeds `/search` for each, (4) **🆕 Bundled directory** — 28 verified Indian trauma centres (TN-heavy) + Delhi/Mumbai/Bengaluru/Hyderabad metros searched spatially when nothing else hits, (5) bundled 196-country national emergency numbers. Triage also works offline — client-side rule engine mirrors backend logic. |
-| **Innovation & features** | AI triage with **visible** reasoning, GPS velocity crash detection with PIN-cancel safety layer, WhatsApp deep link broadcast, demo location picker. |
-| **International integration** | 196 countries pre-loaded. ISO country code from reverse geocoding switches numbers automatically. Demo picker proves it works in London, Tokyo, Berlin, etc. |
+| **Dual-source contact discovery** | OSM Overpass and Google Places fired in **parallel** via `asyncio.gather`. Each result carries a `source` provenance tag (`OpenStreetMap`, `Google Places`, `OSM + Google`, `Bundled directory`). `tel:` links use phone numbers normalised by the `phonenumbers` library. |
+| **Contact volume per query** | 9 OSM categories + 4 Google categories queried in parallel. Auto-expand from 5 km → 10 km radius when sparse. Top-6 phoneless results get Google Place Details lookups capped at 6 calls/search. Typical urban result: 10–15 contacts. |
+| **Offline operation** | 4-tier fallback chain in `App.jsx`: (1) backend `/search` with 8-second Workbox `NetworkFirst`, (2) `localStorage` cache keyed by ~1.1 km grid with 24-hour TTL, (3) `bundled_facilities.json` — 249 verified trauma centres and major hospitals across all 196 countries with 80 km → 600 km radius expansion, (4) hardcoded mock as final placeholder. Country emergency-number banner renders entirely from bundled data with zero network dependency. |
+| **AI integration** | Gemini 2.0 Flash triage with explicit reasoning visible on the top card. Three-layer fallback: model response → JSON validation → rule-based 4-quadrant priority table → original ordering. Free-tier API (60 RPM, 1500 RPD), no SDK — direct REST via httpx. |
+| **Crash detection** | Two-signal fusion: GPS velocity collapse (≥25 km/h → ≤5 km/h within 2 s) AND accelerometer spike (≥3.5 G) within a 4-second alignment window. PIN-cancel safety layer. 12-second post-alert cooldown. |
+| **International coverage** | 196 countries pre-loaded with national emergency numbers. ISO-3166 country code derived from Nominatim reverse-geocoding. Demo-location picker switches across cities (BLR / LON / TYO / BER) to verify cross-border behaviour. |
+| **Languages** | 43 locales — all 22 Indian Schedule-VIII languages + 21 global. RTL layout for Arabic, Persian, Hebrew, Urdu, Kashmiri, Sindhi. |
+| **Real map** | Leaflet 1.9 + CartoDB Dark Matter OSM tiles. No API key. Up to 6 nearest contacts plotted at their actual coordinates. Map re-centres smoothly when the location changes. |
+| **Reliability hardening** | Every upstream call wrapped in `_safe_*` helper. API never returns 5xx for upstream failure — degrades to empty contacts with transparent `source`. Three-mirror Overpass with exponential backoff (overpass-api.de → kumi.systems → openstreetmap.fr). Multi-key Google Places rotation. Per-IP rate limiting (30/min `/search`, 20/min `/triage`). |
 
 ---
 

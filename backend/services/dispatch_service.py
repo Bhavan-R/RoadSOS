@@ -1,18 +1,19 @@
 """POST /dispatch-summary · spoken summary the user can read to a dispatcher.
 
-Demo gold: when the user is on a call with 112, instead of fumbling through a
-description, they read this short, factual, dispatcher-friendly summary.
+When the user is on a call with 112, instead of fumbling through a description,
+they read this short, factual, dispatcher-friendly summary.
 
-AI-generated when API is configured, deterministic template otherwise.
+AI-generated via Gemini 2.0 Flash when API is configured, deterministic template
+otherwise. Either path returns the same response shape so the UI never branches.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
-from typing import Optional
 
-from anthropic import AsyncAnthropic
+import httpx
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
@@ -20,8 +21,13 @@ logger = logging.getLogger(__name__)
 
 dispatch_router = APIRouter()
 
-MODEL = "claude-haiku-4-5-20251001"
+MODEL = "gemini-2.0-flash"
 MAX_TOKENS = 300
+TIMEOUT_S = 12.0
+
+GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+)
 
 SYSTEM_PROMPT = """You are RoadSOS Dispatch Helper.
 
@@ -42,7 +48,7 @@ sentences with clear pauses. Avoid abbreviations except "GPS"."""
 class DispatchRequest(BaseModel):
     lat: float = Field(..., ge=-90, le=90)
     lon: float = Field(..., ge=-180, le=180)
-    landmark: Optional[str] = None
+    landmark: str | None = None
     injured: bool = False
     blocking: bool = False
 
@@ -57,29 +63,53 @@ def _template_summary(req: DispatchRequest) -> str:
     )
 
 
+def _extract_gemini_text(response_json: dict) -> str:
+    candidates = response_json.get("candidates") or []
+    if not candidates:
+        return ""
+    content = candidates[0].get("content") or {}
+    parts = content.get("parts") or []
+    if not parts:
+        return ""
+    return (parts[0].get("text") or "").strip()
+
+
 @dispatch_router.post("/dispatch-summary", summary="Generate a dispatcher-friendly spoken summary")
 async def dispatch_summary(req: DispatchRequest):
     fallback = _template_summary(req)
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    api_key = os.getenv("GEMINI_API_KEY", "")
     if not api_key:
         return {"summary": fallback, "source": "template"}
 
     try:
-        client = AsyncAnthropic(api_key=api_key)
-        payload = {
+        payload_data = {
             "landmark": req.landmark or f"{req.lat:.5f}, {req.lon:.5f}",
             "injured": req.injured,
             "blocking_road": req.blocking,
             "lat": req.lat,
             "lon": req.lon,
         }
-        response = await client.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": f"Situation: {json.dumps(payload)}"}],
-        )
-        summary = response.content[0].text.strip()
+        payload = {
+            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": f"Situation: {json.dumps(payload_data)}"}],
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": MAX_TOKENS,
+            },
+        }
+
+        url = GEMINI_URL.format(model=MODEL, key=api_key)
+        async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
+            r = await client.post(url, json=payload)
+            r.raise_for_status()
+            response_json = r.json()
+
+        summary = _extract_gemini_text(response_json)
         if not summary:
             raise ValueError("Empty AI summary")
         return {"summary": summary, "source": "ai"}

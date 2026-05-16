@@ -1,15 +1,17 @@
 import React from 'react';
 import { Ambulance, Shield, Flame, Phone } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { guardedTelDial } from '../utils/demoMode';
 
 const EMERGENCY_CONFIG = [
-  { key: 'ambulance', label: 'Ambulance', short: 'AMB', Icon: Ambulance, color: '#DC2626' },
-  { key: 'police',    label: 'Police',    short: 'POL', Icon: Shield,    color: '#1D4ED8' },
-  { key: 'fire',      label: 'Fire',      short: 'FIR', Icon: Flame,     color: '#F59E0B' },
-  { key: 'general',   label: 'Disaster',  short: 'DIS', Icon: Phone,     color: '#22C55E' },
+  { key: 'ambulance', i18nKey: 'emergency.ambulance', short: 'AMB', Icon: Ambulance, color: '#DC2626' },
+  { key: 'police',    i18nKey: 'emergency.police',    short: 'POL', Icon: Shield,    color: '#1D4ED8' },
+  { key: 'fire',      i18nKey: 'emergency.fire',      short: 'FIR', Icon: Flame,     color: '#F59E0B' },
+  { key: 'general',   i18nKey: 'emergency.disaster',  short: 'DIS', Icon: Phone,     color: '#22C55E' },
 ];
 
 export default function CountryEmergency({ numbers }) {
+  const { t } = useTranslation();
   if (!numbers) return null;
 
   const { police, ambulance, fire, general } = numbers;
@@ -17,9 +19,10 @@ export default function CountryEmergency({ numbers }) {
 
   return (
     <div className="national-grid">
-      {EMERGENCY_CONFIG.map(({ key, label, short, Icon, color }) => {
+      {EMERGENCY_CONFIG.map(({ key, i18nKey, short, Icon, color }) => {
         const num = vals[key];
         if (!num) return null;
+        const label = t(i18nKey);
 
         return (
           <a

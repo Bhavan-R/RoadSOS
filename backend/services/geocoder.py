@@ -8,6 +8,7 @@ Reliability hardening:
 - Never raises — failures degrade to a coordinate string + None country
 - Strict 8 s timeout
 """
+
 from __future__ import annotations
 
 import logging

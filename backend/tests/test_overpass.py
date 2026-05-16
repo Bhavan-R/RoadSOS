@@ -3,12 +3,13 @@
 We test the parsing/classification logic with hand-crafted OSM response
 fragments — no network calls.
 """
+
 from services.overpass_service import (
-    haversine,
-    classify_element,
-    parse_element,
     _dedupe_by_name,
     build_overpass_query,
+    classify_element,
+    haversine,
+    parse_element,
 )
 
 
@@ -200,7 +201,7 @@ class TestBuildOverpassQuery:
             "service:vehicle:recovery",
             "service:vehicle:tow",
             "vehicle_recovery",
-            "shop\"=\"car",  # showroom
+            'shop"="car',  # showroom
         ]
         for tag_value in required:
             assert tag_value in q, f"missing {tag_value} in Overpass query"

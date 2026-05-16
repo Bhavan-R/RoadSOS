@@ -3,6 +3,7 @@
 Single-source structured-ish format. Suppresses noisy third-party loggers so the
 backend stdout stays readable on Render.
 """
+
 import logging
 import sys
 
