@@ -2076,3 +2076,120 @@
   align-items: center;
   gap: 6px;
 }
+
+/* ─── Real Leaflet map ─────────────────────────────────────────────── */
+.rs-real-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+.rs-real-map .leaflet-container {
+  background: #0B1424;
+  font-family: var(--rs-font-display, "Space Grotesk", system-ui, sans-serif);
+  outline: none;
+}
+.rs-real-map .leaflet-control-attribution {
+  background: rgba(6, 14, 28, 0.65) !important;
+  color: #94A3B8 !important;
+  font-size: 9px !important;
+  padding: 2px 6px !important;
+  border-radius: 6px 0 0 0;
+  backdrop-filter: blur(6px);
+}
+.rs-real-map .leaflet-control-attribution a {
+  color: #60A5FA !important;
+}
+.rs-real-map .leaflet-control-zoom {
+  border: none !important;
+  margin: 12px !important;
+}
+.rs-real-map .leaflet-control-zoom a {
+  background: rgba(6, 14, 28, 0.85) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* User location marker — pulsing dot + halo */
+.rs-user-marker {
+  position: relative;
+  pointer-events: none;
+}
+.rs-user-halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+}
+.rs-user-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: rs-blip 2.5s ease-out infinite;
+}
+.rs-user-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+}
+
+/* Service markers — colored pin with name chip above */
+.rs-service-marker {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.rs-svc-chip {
+  margin-bottom: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(6, 14, 28, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: -0.1px;
+  backdrop-filter: blur(6px);
+}
+.rs-svc-name { color: #fff; }
+.rs-svc-km {
+  color: #94A3B8;
+  font-family: var(--rs-font-mono, "JetBrains Mono", ui-monospace, monospace);
+}
+.rs-svc-pin {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+.rs-svc-point {
+  width: 0;
+  height: 0;
+  margin-top: -2px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #fff;
+}

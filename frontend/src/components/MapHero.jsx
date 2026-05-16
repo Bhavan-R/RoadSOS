@@ -1,7 +1,7 @@
 import React from 'react';
 import { Hospital, Shield, Ambulance, Truck, Car, PhoneCall, Siren, WifiOff, Map, AlertTriangle, Zap, Cog } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { MapBackground, UserDot, ServiceMarker } from './MapBackground';
+import RealMap from './RealMap';
 import SOSButton from './SOSButton';
 
 const CAT_ICONS = {
@@ -93,17 +93,9 @@ export default function MapHero({
   demoMode,
 }) {
   const { t } = useTranslation();
-  // Pick up to 4 nearest contacts for markers on map
-  const markerContacts = (contacts || []).slice(0, 4);
+  // Pick up to 6 nearest contacts for markers on real map
+  const markerContacts = (contacts || []).slice(0, 6);
   const dockContacts = (contacts || []).slice(0, 3);
-
-  // Position markers in fixed quadrants (top-left, top-right, bottom-left, bottom-right)
-  const POSITIONS = [
-    { top: '24%', left: '22%' },
-    { top: '32%', left: '78%' },
-    { top: '58%', left: '20%' },
-    { top: '62%', left: '76%' },
-  ];
 
   const formatCoords = (loc) => {
     if (!loc?.lat || !loc?.lon) return t('location.waiting');
@@ -114,8 +106,14 @@ export default function MapHero({
 
   return (
     <div className="map-hero">
-      {/* Map background */}
-      <MapBackground muted />
+      {/* Real GPS-anchored map (Leaflet + OSM) */}
+      <RealMap
+        location={location}
+        contacts={markerContacts}
+        gpsLost={gpsLost}
+        interactive={false}
+        zoom={15}
+      />
 
       {/* Top gradient overlay for header readability */}
       <div className="map-hero-top-fade" />
@@ -182,32 +180,6 @@ export default function MapHero({
           </div>
         </div>
       </div>
-
-      {/* User location dot (only when we have a location) */}
-      {location?.lat && <UserDot gpsLost={gpsLost} />}
-
-      {/* Service markers on the map */}
-      {markerContacts.map((c, i) => {
-        const cat = (c.category || 'repair').toLowerCase();
-        const tone = CAT_TONES[cat] || 'teal';
-        const iconName = cat === 'police' ? 'shield'
-          : cat === 'fire' ? 'fire'
-          : cat === 'towing' ? 'car'
-          : 'ambulance';
-        const pos = POSITIONS[i] || POSITIONS[0];
-        const shortName = (c.name || '').split(/[,·\-]/)[0].trim().substring(0, 14);
-        return (
-          <ServiceMarker
-            key={c.id || i}
-            top={pos.top}
-            left={pos.left}
-            tone={tone}
-            icon={iconName}
-            label={shortName}
-            km={typeof c.distance === 'number' ? c.distance.toFixed(1) : '?'}
-          />
-        );
-      })}
 
       {/* Bottom dock gradient + SOS + Quick contacts */}
       <div className="map-hero-dock">
