@@ -1,0 +1,27 @@
+# Ruff config for RoadSOS backend
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes (undefined names, unused imports)
+  "I",   # isort (import ordering)
+  "UP",  # pyupgrade (modern Python syntax)
+  "B",   # flake8-bugbear (common bugs)
+  "C4",  # flake8-comprehensions (cleaner list/dict comps)
+  "SIM", # flake8-simplify
+]
+ignore = [
+  "E501",  # line too long (handled by formatter)
+  "B008",  # do not perform function calls in default arguments (FastAPI uses this)
+  "SIM108",# ternary operator (can harm readability)
+]
+
+[lint.isort]
+known-first-party = ["services"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
