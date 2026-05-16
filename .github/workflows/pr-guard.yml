@@ -1,0 +1,54 @@
+name: PR Guard
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  conflict-check:
+    name: Merge conflict check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for merge conflicts with main
+        run: |
+          git fetch origin main
+          git config user.email "ci@roadsos.app"
+          git config user.name "RoadSOS CI"
+
+          if git merge --no-commit --no-ff origin/main 2>&1 | grep -q "CONFLICT"; then
+            echo "❌ This PR has merge conflicts with main."
+            echo "Please rebase your branch: git rebase origin/main"
+            git merge --abort
+            exit 1
+          else
+            echo "✅ No merge conflicts detected."
+            git merge --abort 2>/dev/null || true
+          fi
+
+  branch-staleness:
+    name: Branch freshness check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Warn if branch is more than 30 commits behind main
+        run: |
+          git fetch origin main
+          BEHIND=$(git rev-list --count HEAD..origin/main)
+          echo "Branch is $BEHIND commits behind main."
+
+          if [ "$BEHIND" -gt 30 ]; then
+            echo "⚠️ WARNING: This branch is $BEHIND commits behind main."
+            echo "Consider rebasing to reduce future merge complexity."
+            echo "  git rebase origin/main"
+          else
+            echo "✅ Branch is fresh enough ($BEHIND commits behind)."
+          fi
