@@ -17,7 +17,8 @@
  * - India (Tamil Nadu + metros): deepest coverage (hackathon at IIT-M).
  * - North America, Europe, East/SE Asia, Middle East, Africa, Oceania,
  *   Latin America: top-tier trauma/teaching hospitals per major metro.
- * - 92 facilities across 39 countries as of last update.
+ * - 249 facilities across all 196 countries — every country with an
+ *   emergency-numbers entry has at least one bundled hospital fallback.
  *
  * Data quality policy:
  * - Every entry has verified coordinates and a publicly listed name.
@@ -42,29 +43,51 @@ function haversine(lat1, lon1, lat2, lon2) {
 /**
  * Find the nearest bundled facilities within `maxKm` of the given point.
  *
+ * Behaviour: tries `maxKm` first. If nothing within range, expands to
+ * `farMaxKm` (default 600 km) so that sparse-coverage countries still
+ * return the single nearest national hospital instead of an empty list.
+ * The "Bundled directory · regional" source label flags the expanded
+ * result so the UI can present it honestly.
+ *
  * @param {number} lat
  * @param {number} lon
  * @param {object} [opts]
- * @param {number} [opts.maxKm=80] — drop facilities farther than this
- * @param {number} [opts.limit=8]  — max contacts returned
+ * @param {number} [opts.maxKm=80]      — preferred radius (dense coverage)
+ * @param {number} [opts.farMaxKm=600]  — expanded radius for sparse regions
+ * @param {number} [opts.limit=8]       — max contacts returned
  * @returns {Array<object>} Contact objects in the same shape as /search
  */
-export function findNearestFromBundle(lat, lon, { maxKm = 80, limit = 8 } = {}) {
+export function findNearestFromBundle(
+  lat,
+  lon,
+  { maxKm = 80, farMaxKm = 600, limit = 8 } = {},
+) {
   if (typeof lat !== 'number' || typeof lon !== 'number') return [];
 
-  const scored = facilities
+  const allScored = facilities
     .map((f) => ({
       ...f,
       distance: Number(haversine(lat, lon, f.lat, f.lon).toFixed(2)),
-      source: 'Bundled directory',
       isOpen: null,
       aiReason: null,
     }))
-    .filter((f) => f.distance <= maxKm)
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, limit);
+    .sort((a, b) => a.distance - b.distance);
 
-  return scored;
+  const close = allScored
+    .filter((f) => f.distance <= maxKm)
+    .slice(0, limit)
+    .map((f) => ({ ...f, source: 'Bundled directory' }));
+
+  if (close.length > 0) return close;
+
+  // Sparse fallback — return the single nearest within farMaxKm
+  // so the user in (e.g.) a remote area still sees a real hospital.
+  const far = allScored
+    .filter((f) => f.distance <= farMaxKm)
+    .slice(0, Math.min(2, limit))
+    .map((f) => ({ ...f, source: 'Bundled directory · regional' }));
+
+  return far;
 }
 
 /**
