@@ -23,14 +23,14 @@ tracking_router = APIRouter()
 
 # ─── Store ────────────────────────────────────────────────────────────────────
 
-_TTL_SECONDS: int = 2 * 60 * 60      # 2 hours
-_MAX_TOKENS:  int = 500
+_TTL_SECONDS: int = 2 * 60 * 60  # 2 hours
+_MAX_TOKENS: int = 500
 _store: dict[str, dict] = {}
 
 
 def _prune() -> None:
     """Evict expired tokens (called before every write)."""
-    now     = time.time()
+    now = time.time()
     expired = [t for t, v in _store.items() if now - v["updated_at"] > _TTL_SECONDS]
     for t in expired:
         del _store[t]
@@ -45,19 +45,21 @@ def _evict_oldest() -> None:
 
 # ─── Models ───────────────────────────────────────────────────────────────────
 
+
 class TrackCreate(BaseModel):
-    lat:      float           = Field(..., ge=-90,  le=90)
-    lon:      float           = Field(..., ge=-180, le=180)
-    landmark: str | None   = Field(None, max_length=200)
+    lat: float = Field(..., ge=-90, le=90)
+    lon: float = Field(..., ge=-180, le=180)
+    landmark: str | None = Field(None, max_length=200)
 
 
 class TrackUpdate(BaseModel):
-    lat:      float           = Field(..., ge=-90,  le=90)
-    lon:      float           = Field(..., ge=-180, le=180)
-    landmark: str | None   = Field(None, max_length=200)
+    lat: float = Field(..., ge=-90, le=90)
+    lon: float = Field(..., ge=-180, le=180)
+    landmark: str | None = Field(None, max_length=200)
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
+
 
 @tracking_router.post(
     "/track",
@@ -72,12 +74,12 @@ def create_track(body: TrackCreate):
     """
     _prune()
     _evict_oldest()
-    token = secrets.token_urlsafe(15)   # 20 base64url chars
-    now   = time.time()
+    token = secrets.token_urlsafe(15)  # 20 base64url chars
+    now = time.time()
     _store[token] = {
-        "lat"       : body.lat,
-        "lon"       : body.lon,
-        "landmark"  : body.landmark or "",
+        "lat": body.lat,
+        "lon": body.lon,
+        "landmark": body.landmark or "",
         "created_at": now,
         "updated_at": now,
     }
@@ -94,9 +96,9 @@ def update_track(token: str, body: TrackUpdate):
     entry = _store.get(token)
     if not entry:
         raise HTTPException(status_code=404, detail="Token not found or expired")
-    entry["lat"]        = body.lat
-    entry["lon"]        = body.lon
-    entry["landmark"]   = body.landmark or entry["landmark"]
+    entry["lat"] = body.lat
+    entry["lon"] = body.lon
+    entry["landmark"] = body.landmark or entry["landmark"]
     entry["updated_at"] = time.time()
     return {"ok": True}
 
@@ -120,22 +122,24 @@ def view_track(token: str, fmt: str = "html"):
         del _store[token]
         raise HTTPException(status_code=410, detail="Tracking session expired (2 h TTL)")
 
-    lat      = entry["lat"]
-    lon      = entry["lon"]
-    age_s    = int(time.time() - entry["updated_at"])
+    lat = entry["lat"]
+    lon = entry["lon"]
+    age_s = int(time.time() - entry["updated_at"])
     landmark = entry["landmark"]
 
     if fmt == "json":
-        return JSONResponse({
-            "lat"     : lat,
-            "lon"     : lon,
-            "landmark": landmark,
-            "age_s"   : age_s,
-        })
+        return JSONResponse(
+            {
+                "lat": lat,
+                "lon": lon,
+                "landmark": landmark,
+                "age_s": age_s,
+            }
+        )
 
     # ── Build the HTML page ────────────────────────────────────────────────
     safe_landmark = escape(landmark or "Unknown location")
-    gmaps_url     = f"https://maps.google.com/?q={lat},{lon}"
+    gmaps_url = f"https://maps.google.com/?q={lat},{lon}"
 
     # NOTE: All literal JS braces are doubled ({{ }}) so Python's f-string
     # leaves them as single braces in the output.

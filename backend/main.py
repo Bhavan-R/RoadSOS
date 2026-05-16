@@ -100,11 +100,11 @@ app.add_middleware(RequestLogMiddleware)
 app.add_middleware(ErrorHandlingMiddleware)
 
 # ─── Routers ─────────────────────────────────────────────────────────────
-app.include_router(health_router,   tags=["Observability"])
-app.include_router(search_router,   tags=["Search"])
-app.include_router(triage_router,   tags=["AI Triage"])
+app.include_router(health_router, tags=["Observability"])
+app.include_router(search_router, tags=["Search"])
+app.include_router(triage_router, tags=["AI Triage"])
 app.include_router(dispatch_router, tags=["Dispatch"])
-app.include_router(offline_router,  tags=["Offline"])
+app.include_router(offline_router, tags=["Offline"])
 app.include_router(tracking_router, tags=["Tracking"])
 
 
