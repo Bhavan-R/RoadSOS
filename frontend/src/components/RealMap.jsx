@@ -145,15 +145,18 @@ function TileLoadSignal({ onLoad }) {
   return null;
 }
 
-export default function RealMap({
-  location,
-  contacts = [],
-  countryCode = null,
-  gpsLost = false,
-  draggable = true,
-  zoom = 15,
-}) {
-  const mapRef = useRef(null);
+const RealMap = React.forwardRef(function RealMap(
+  {
+    location,
+    contacts = [],
+    countryCode = null,
+    gpsLost = false,
+    draggable = true,
+    zoom = 15,
+  },
+  externalRef
+) {
+  const internalMapRef = useRef(null);
   const [tilesLoaded, setTilesLoaded] = useState(false);
 
   // Default fallback (India centroid) until GPS arrives — better than a blank screen.
@@ -181,7 +184,13 @@ export default function RealMap({
       )}
 
       <MapContainer
-        ref={mapRef}
+        ref={(map) => {
+          internalMapRef.current = map;
+          if (externalRef) {
+            if (typeof externalRef === 'function') externalRef(map);
+            else externalRef.current = map;
+          }
+        }}
         center={[lat, lon]}
         zoom={hasGps ? zoom : 4}
         zoomControl={false}
@@ -226,4 +235,6 @@ export default function RealMap({
       </MapContainer>
     </div>
   );
-}
+});
+
+export default RealMap;

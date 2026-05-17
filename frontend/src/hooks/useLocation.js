@@ -38,6 +38,27 @@ async function ipFallback() {
 }
 
 /**
+ * Set location manually (e.g., user taps on map or searches address).
+ * Stores in localStorage so it persists across reloads.
+ */
+export function setManualLocation(lat, lon, landmark) {
+  const manualLoc = { lat, lon, landmark };
+  try {
+    localStorage.setItem('roadsos:manual-location', JSON.stringify(manualLoc));
+  } catch { /* storage full or disabled */ }
+  return manualLoc;
+}
+
+/**
+ * Clear manual location override and resume GPS detection.
+ */
+export function clearManualLocation() {
+  try {
+    localStorage.removeItem('roadsos:manual-location');
+  } catch { /* silent */ }
+}
+
+/**
  * Request DeviceMotion permission on iOS 13+.
  * Must be called from a user-gesture handler (button tap).
  * No-op on Android / desktop.
@@ -57,9 +78,21 @@ export async function requestMotionPermission() {
 }
 
 export function useLocation({ onCrashDetected } = {}) {
-  const [location, setLocation]   = useState(null);
+  // Try to restore manual override from localStorage
+  const getInitialLocation = () => {
+    try {
+      const stored = localStorage.getItem('roadsos:manual-location');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return { ...parsed, source: 'manual' };
+      }
+    } catch { /* silent */ }
+    return null;
+  };
+
+  const [location, setLocation]   = useState(getInitialLocation());
   const [error, setError]         = useState(null);
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading]     = useState(!location); // false if manual location loaded
 
   const speedHistoryRef      = useRef([]);
   const watchIdRef           = useRef(null);
