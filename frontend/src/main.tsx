@@ -13,12 +13,21 @@ ReactDOM.createRoot(document.getElementById('app')!).render(
 
 // ── Service worker auto-update ─────────────────────────────────────────────
 // When a new build deploys, the browser downloads the updated sw.js.
-// skipWaiting() in sw.js makes the new SW activate immediately, then
-// clients.claim() takes control of this page.  We detect that takeover
-// via controllerchange and reload so the page gets the new bundle.
-// Without this, users stay on stale cached JS until they manually reload.
+// skipWaiting() makes the new SW activate immediately; clients.claim()
+// fires controllerchange on open pages.  We reload so the new bundle loads.
+//
+// IMPORTANT: capture hadController BEFORE adding the listener.
+// On first SW install, controller is null → claim() fires controllerchange
+// with null→SW transition.  We must NOT reload in that case or we get an
+// infinite reload loop.  Only reload when there was already a controller
+// (i.e. this is a genuine update from old SW → new SW).
 if ('serviceWorker' in navigator) {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
+    if (hadController && !reloading) {
+      reloading = true;
+      window.location.reload();
+    }
   });
 }
