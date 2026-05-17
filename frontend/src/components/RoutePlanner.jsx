@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { prefetchRoute } from '../utils/routeCache';
 import { searchPlaces, QUICK_PICK_CITIES } from '../utils/geocode';
 
@@ -23,7 +24,7 @@ import { searchPlaces, QUICK_PICK_CITIES } from '../utils/geocode';
  * select. Same-named places in different countries are disambiguated by
  * the secondary "context" line ("Assam, India" vs "Payeska, Bolivia").
  */
-function PlaceInput({ label, value, onChange, onGeocoded, geo, disabled, id }) {
+function PlaceInput({ label, value, onChange, onGeocoded, geo, disabled, id, placeholder }) {
   const [busy, setBusy]               = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showList, setShowList]       = useState(false);
@@ -114,7 +115,7 @@ function PlaceInput({ label, value, onChange, onGeocoded, geo, disabled, id }) {
           onChange={(e) => { onChange(e.target.value); onGeocoded(null); }}
           onFocus={() => { if (suggestions.length > 0) setShowList(true); }}
           onKeyDown={handleKey}
-          placeholder="Start typing a city, town, or landmark"
+          placeholder={placeholder || 'Start typing a city, town, or landmark'}
           disabled={disabled}
           autoComplete="off"
           spellCheck="false"
@@ -165,6 +166,7 @@ function PlaceInput({ label, value, onChange, onGeocoded, geo, disabled, id }) {
 }
 
 export default function RoutePlanner({ open, onClose }) {
+  const { t } = useTranslation();
   // Text + resolved geo state for each input
   const [originText, setOriginText] = useState('');
   const [originGeo,  setOriginGeo]  = useState(null);
@@ -254,10 +256,9 @@ export default function RoutePlanner({ open, onClose }) {
         <div className="modal__header-row">
           <span className="modal__header-icon">🗺</span>
           <div>
-            <h2>Plan an offline trip</h2>
+            <h2>{t('plan_trip.title', 'Plan an offline trip')}</h2>
             <p className="modal__subtitle">
-              Cache hospitals + police along your route while you're online —
-              works even in cellular dead zones later.
+              {t('plan_trip.subtitle', "Cache hospitals + police along your route while you're online — works even in cellular dead zones later.")}
             </p>
           </div>
         </div>
@@ -266,7 +267,8 @@ export default function RoutePlanner({ open, onClose }) {
         <div className="route-planner__form">
           <PlaceInput
             id="route-origin"
-            label="From"
+            label={t('plan_trip.from', 'From')}
+            placeholder={t('plan_trip.placeholder', 'Start typing a city, town, or landmark')}
             value={originText}
             onChange={setOriginText}
             onGeocoded={setOriginGeo}
@@ -276,7 +278,8 @@ export default function RoutePlanner({ open, onClose }) {
           <div className="route-planner__arrow" aria-hidden="true">→</div>
           <PlaceInput
             id="route-destination"
-            label="To"
+            label={t('plan_trip.to', 'To')}
+            placeholder={t('plan_trip.placeholder', 'Start typing a city, town, or landmark')}
             value={destText}
             onChange={setDestText}
             onGeocoded={setDestGeo}
@@ -296,11 +299,11 @@ export default function RoutePlanner({ open, onClose }) {
                 disabled={!navigator.geolocation}
                 title="Set origin to your current GPS coordinates"
               >
-                📍 Use current location as origin
+                📍 {t('plan_trip.use_current', 'Use current location as origin')}
               </button>
             </div>
             <div className="route-planner__chips">
-              <span className="route-planner__chips-label">Quick fill destination:</span>
+              <span className="route-planner__chips-label">{t('plan_trip.quick_fill', 'Quick fill destination:')}</span>
               {QUICK_PICK_CITIES.map((c) => (
                 <button
                   key={c.name}
@@ -361,7 +364,7 @@ export default function RoutePlanner({ open, onClose }) {
                 ? 'Type or pick origin + destination first'
                 : 'Pre-fetch /search for waypoints along this route'}
             >
-              🛣 Cache route for offline use
+              🛣 {t('plan_trip.cache_route', 'Cache route for offline use')}
             </button>
           )}
           {status === 'running' && (
@@ -380,7 +383,7 @@ export default function RoutePlanner({ open, onClose }) {
             disabled={status === 'running'}
             id="route-close-btn"
           >
-            {status === 'done' ? 'Done' : 'Close'}
+            {status === 'done' ? t('plan_trip.done', 'Done') : t('plan_trip.close', 'Close')}
           </button>
         </div>
       </div>

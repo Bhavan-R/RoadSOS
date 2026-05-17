@@ -224,6 +224,20 @@ export default function App() {
     return unsub;
   }, [searchHasRealData, searchLat]);
 
+  // ── Periodic auto-refresh while stuck on bundled fallback ──
+  // If the user is staring at pre-loaded directory data (network was
+  // flaky, backend was sleeping), retry every 30 s automatically so the
+  // app self-heals without the user reloading.  Cleared the moment real
+  // data arrives — no point burning Render quota when we already have
+  // live results.
+  useEffect(() => {
+    if (searchHasRealData || searchLat == null || !isOnline) return;
+    const id = setInterval(() => {
+      setSearchRetry((n) => n + 1);
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [searchHasRealData, searchLat, isOnline]);
+
   useEffect(() => {
     if (searchLat == null || searchLon == null) return;
 
