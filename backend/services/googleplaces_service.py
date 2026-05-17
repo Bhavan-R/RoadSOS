@@ -235,7 +235,10 @@ async def search_nearby_places(
     seen_ids: set[str] = set()
 
     async with httpx.AsyncClient(timeout=20.0) as client:
-        for place_type in SEARCH_TYPES:
+        # ─── PARALLEL Nearby Search across all SEARCH_TYPES ─────────────
+        # Previously sequential: 4 categories × 5-10 s = 20-40 s.
+        # Now ~5-10 s total (slowest category bounds the wall clock).
+        async def _nearby(place_type: str) -> list[dict]:
             try:
                 resp = await client.get(
                     NEARBY_URL,
@@ -246,38 +249,59 @@ async def search_nearby_places(
                         "key": api_key,
                     },
                 )
-                places = resp.json().get("results", [])[:5]
+                return resp.json().get("results", [])[:5]
             except Exception as exc:
                 logger.warning(f"Google Places nearby query failed for {place_type}: {exc}")
-                continue
+                return []
 
+        nearby_results = await asyncio.gather(
+            *[_nearby(pt) for pt in SEARCH_TYPES], return_exceptions=False
+        )
+
+        # ─── Collect unique places we still need to enrich with Details ─
+        places_to_enrich: list[dict] = []
+        for places in nearby_results:
             for place in places:
                 place_id = place.get("place_id", "")
                 if not place_id or place_id in seen_ids:
                     continue
-                seen_ids.add(place_id)
-
                 category = map_google_types(place.get("types", []))
                 if not category:
                     continue
+                seen_ids.add(place_id)
+                places_to_enrich.append({"place": place, "category": category, "place_id": place_id})
 
-                loc = place["geometry"]["location"]
-                details = await _get_place_details(client, place_id, api_key, region)
+        # ─── PARALLEL Place Details lookups ─────────────────────────────
+        # Was up to 20 sequential awaits × 5-10 s each = 100-200 s.
+        # Now ~5-10 s total.
+        details_list = await asyncio.gather(
+            *[
+                _get_place_details(client, item["place_id"], api_key, region)
+                for item in places_to_enrich
+            ],
+            return_exceptions=True,
+        )
 
-                results.append(
-                    {
-                        "id": f"gp_{place_id}",
-                        "name": place.get("name", "Unknown"),
-                        "category": category,
-                        "phone": details["phone"],
-                        "distance": round(haversine(lat, lon, loc["lat"], loc["lng"]), 2),
-                        "lat": loc["lat"],
-                        "lon": loc["lng"],
-                        "source": "Google Places",
-                        "isOpen": details["isOpen"],
-                        "aiReason": None,
-                    }
-                )
+        for item, details in zip(places_to_enrich, details_list):
+            if isinstance(details, BaseException):
+                logger.warning("Place Details failed for %s: %s", item["place_id"], details)
+                details = {"phone": None, "isOpen": None}
+            place = item["place"]
+            loc = place["geometry"]["location"]
+            results.append(
+                {
+                    "id": f"gp_{item['place_id']}",
+                    "name": place.get("name", "Unknown"),
+                    "category": item["category"],
+                    "phone": details["phone"],
+                    "distance": round(haversine(lat, lon, loc["lat"], loc["lng"]), 2),
+                    "lat": loc["lat"],
+                    "lon": loc["lng"],
+                    "source": "Google Places",
+                    "isOpen": details["isOpen"],
+                    "aiReason": None,
+                }
+            )
 
     sorted_results = sorted(results, key=lambda x: x["distance"])
     await google_cache.set(cache_key, sorted_results)
