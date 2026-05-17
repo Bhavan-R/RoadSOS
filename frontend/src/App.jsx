@@ -165,20 +165,10 @@ export default function App() {
     startBackendWarmup();
   }, []);
 
-  // Auto-retry search when backend finishes cold-starting.
-  // Render free tier takes 35–55 s to cold-start.  If the first /search
-  // attempt times out (30 s abort) before the dyno is ready, the warmup
-  // utility will eventually get a /health 200 and flip status → 'ready'.
-  // At that point, if we still have no real data, bump searchRetry so the
-  // search effect re-runs against the now-warm backend.
-  useEffect(() => {
-    const unsub = subscribeBackendStatus((status) => {
-      if (status === 'ready' && !searchHasRealData && (searchLat != null)) {
-        setSearchRetry((n) => n + 1);
-      }
-    });
-    return unsub;
-  }, [searchHasRealData, searchLat]);
+  // NOTE: the backend-status auto-retry effect lives further down, AFTER
+  // searchHasRealData and searchLat are declared.  Placing it here caused
+  // a Temporal Dead Zone crash because those consts hadn't been
+  // initialised yet when this effect's dependency array was evaluated.
 
   // Listen for SOS dispatch events to open the dispatch screen
   useEffect(() => {
@@ -218,6 +208,21 @@ export default function App() {
 
   const searchLat = activeLocation?.lat ?? null;
   const searchLon = activeLocation?.lon ?? null;
+
+  // Auto-retry search when backend finishes cold-starting.
+  // Render free tier takes 35–55 s to cold-start.  If the first /search
+  // attempt times out before the dyno is ready, the warmup utility will
+  // eventually get a /health 200 and flip status → 'ready'.  At that
+  // point, if we still have no real data, bump searchRetry so the search
+  // effect re-runs against the now-warm backend.
+  useEffect(() => {
+    const unsub = subscribeBackendStatus((status) => {
+      if (status === 'ready' && !searchHasRealData && searchLat != null) {
+        setSearchRetry((n) => n + 1);
+      }
+    });
+    return unsub;
+  }, [searchHasRealData, searchLat]);
 
   useEffect(() => {
     if (searchLat == null || searchLon == null) return;
