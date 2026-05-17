@@ -37,7 +37,10 @@ const ATTEMPTS = [
   { timeoutMs: 30_000, pauseAfterMs: 0     },
 ];
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+// Fall back to deployed Render backend in production if env var is missing,
+// so warmup pings still hit the real server. Dev uses Vite proxy.
+const API_BASE = import.meta.env.VITE_API_URL
+  || (import.meta.env.PROD ? 'https://roadsos-pl3k.onrender.com' : '');
 const STATUS_EVENT = 'roadsos:backend-status';
 
 let intervalId        = null;

@@ -12,7 +12,9 @@
  * the caller should degrade gracefully.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+// Production fallback to deployed Render backend if env var is missing.
+const API_BASE = import.meta.env.VITE_API_URL
+  || (import.meta.env.PROD ? 'https://roadsos-pl3k.onrender.com' : '');
 
 /**
  * Create a tracking session on the backend.
@@ -37,7 +39,8 @@ export async function createTrackingSession(location, landmark) {
     if (!res.ok) return null;
     const { token } = await res.json();
     // The tracking page is rendered by the backend
-    const backendBase = import.meta.env.VITE_API_URL || window.location.origin;
+    const backendBase = import.meta.env.VITE_API_URL
+      || (import.meta.env.PROD ? 'https://roadsos-pl3k.onrender.com' : window.location.origin);
     return `${backendBase}/track/${token}`;
   } catch {
     return null;   // offline, cold start, or timeout

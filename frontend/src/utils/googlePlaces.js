@@ -2,7 +2,9 @@
 // This wraps the /triage API endpoint with a client-side rule-based fallback
 // so triage works even when the device is completely offline.
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+// Production fallback to deployed Render backend if env var is missing.
+const API_BASE = import.meta.env.VITE_API_URL
+  || (import.meta.env.PROD ? 'https://roadsos-pl3k.onrender.com' : '');
 
 // ─── Client-side rule-based triage ──────────────────────────────────────────
 // Mirrors backend/services/ai_triage.py :: rule_based_triage() exactly.
