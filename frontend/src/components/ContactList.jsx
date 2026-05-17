@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ContactCard from './ContactCard';
-import { CATS } from '../App';
+import { CATS } from '../constants';
 
 // Map filter chip keys to i18n keys. "All" + "Puncture" are filter-only;
 // the rest already exist as category.* keys used elsewhere.

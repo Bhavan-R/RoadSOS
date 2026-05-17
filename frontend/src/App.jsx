@@ -121,7 +121,10 @@ const MOCK_DATA = {
   count: MOCK_CONTACTS.length,
 };
 
-export const CATS = ["All", "Hospital", "Police", "Repair", "Towing", "Fire", "Showroom", "Puncture"];
+// CATS moved to ./constants.js to break the App ↔ ContactList circular
+// import that caused a production TDZ crash. Re-export here so any
+// external importer expecting it from App.jsx keeps working.
+export { CATS } from './constants';
 
 // ─── First-launch detection ───────────────────────────────────────────────────
 const ONBOARDED_KEY = 'roadsos_onboarded_v1';
