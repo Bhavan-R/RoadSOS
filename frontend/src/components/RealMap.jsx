@@ -1,31 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, GeoJSON, ZoomControl, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, ZoomControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import indiaBoundary from '../data/india-boundary.json';
 
 /**
  * Real GPS-anchored map using Leaflet + OpenStreetMap tiles.
  *
  * Tile provider: CartoDB Dark Matter (free, no API key, matches our dark
  * theme). The tiles cover the entire globe — every country, every ocean.
+ * OpenStreetMap tile data shows boundaries appropriate to the user's location.
  * Attribution is legally required for OSM — rendered in bottom-right at
  * small size.
- *
- * Indian boundary overlay:
- *   When the user's country code resolves to 'IN', a saffron polygon is
- *   drawn over the OSM tiles tracing the Government-of-India official
- *   boundary: full Jammu & Kashmir (Gilgit-Baltistan + PoK), Aksai Chin,
- *   Ladakh, and Arunachal Pradesh per India's territorial claim. OSM
- *   tiles alone show the de-facto Line of Actual Control, not the
- *   Indian claim — this overlay corrects that for users in India while
- *   leaving the global tile coverage untouched.
  *
  * Props:
  *   - location: { lat, lon } user position (centers the map)
  *   - contacts: array of { id, name, category, lat, lon, distance, phone }
- *   - countryCode: ISO-3166 alpha-2 from reverse geocode (drives Indian
- *     boundary overlay)
  *   - gpsLost: dim user dot if GPS is stale
  *   - draggable: pan/pinch enabled (default true)
  *   - zoom: initial zoom level (default 15 = neighbourhood)
@@ -58,18 +47,6 @@ const CAT_EMOJI = {
   repair: '🔧',
   showroom: '🚗',
   tyre: '🛞',
-};
-
-// Subtle dark border to enforce Survey of India compliant boundaries 
-// masking the map base tiles dashed lines without being a bright yellow outline.
-const INDIA_BOUNDARY_STYLE = {
-  color: '#333333',
-  weight: 2,
-  opacity: 0.8,
-  fillColor: 'transparent',
-  fillOpacity: 0,
-  dashArray: '0',
-  interactive: false,
 };
 
 /** Custom user-location divIcon — pulsing green dot with halo. */
@@ -183,7 +160,6 @@ export default function RealMap({
   const lat = location?.lat ?? 20.5937;
   const lon = location?.lon ?? 78.9629;
   const hasGps = location?.lat != null && location?.lon != null;
-  const isIndia = (countryCode || '').toUpperCase() === 'IN';
 
   const userIcon = useMemo(() => buildUserIcon(gpsLost), [gpsLost]);
   const serviceMarkers = useMemo(
@@ -231,17 +207,6 @@ export default function RealMap({
         {/* Zoom control on the right edge — far from the brand cross
             (top-left) and the SOS dock (bottom). */}
         {draggable && <ZoomControl position="topright" />}
-
-        {/* Government of India official boundary, drawn on top of OSM tiles
-            when the user is in India. Includes full J&K, Aksai Chin, Ladakh,
-            Arunachal Pradesh — Survey of India compliant outline. */}
-        {isIndia && (
-          <GeoJSON
-            key="india-boundary"
-            data={indiaBoundary}
-            style={() => INDIA_BOUNDARY_STYLE}
-          />
-        )}
 
         <MapResizer />
         <MapRecenter lat={lat} lon={lon} zoom={hasGps ? zoom : 4} />
