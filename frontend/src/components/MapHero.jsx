@@ -94,6 +94,10 @@ export default function MapHero({
   medicalIdConfigured,
   onTestCrash,
   demoMode,
+  // Truthful status signals: even if /health returned 200, we shouldn't
+  // claim ONLINE while the user is staring at bundled fallback data.
+  searchLoading,
+  usingFallbackData,
 }) {
   const { t } = useTranslation();
   // Pick up to 6 nearest contacts for markers on real map
@@ -225,11 +229,14 @@ export default function MapHero({
             </button>
           )}
           {(() => {
-            // Four states, in priority order:
-            //   1. Location is manually set     → purple 'MANUAL'
-            //   2. Browser offline             → red 'OFFLINE'
-            //   3. Backend cold/warming        → amber 'CONNECTING…'
-            //   4. Otherwise (online + ready)  → green 'ONLINE'
+            // Status pill reflects the WHOLE pipeline, not just /health:
+            //   1. MANUAL    — user pinned location manually
+            //   2. OFFLINE   — browser offline or GPS lost
+            //   3. WAKING…   — search in flight, OR backend warmup pending
+            //                  (covers Render free-tier cold start)
+            //   4. FALLBACK  — backend never returned real data, showing
+            //                  bundled directory (amber, NOT green)
+            //   5. ONLINE    — backend healthy AND we have real search data
             if (location?.source === 'manual') {
               return (
                 <div
@@ -242,9 +249,6 @@ export default function MapHero({
               );
             }
             const isOffline = !isOnline || gpsLost;
-            const isWarming = !isOffline
-              && (backendStatus === 'warming' || backendStatus === 'cold' || backendStatus === 'unknown');
-
             if (isOffline) {
               return (
                 <div className="mh-status-pill mh-status-offline">
@@ -253,11 +257,31 @@ export default function MapHero({
                 </div>
               );
             }
-            if (isWarming) {
+            const backendNotReady =
+              backendStatus === 'warming' ||
+              backendStatus === 'cold' ||
+              backendStatus === 'unknown';
+            // While the search is in flight (cold start can take ~55s on
+            // Render free tier), show a spinner instead of green ONLINE.
+            if (searchLoading || backendNotReady) {
               return (
                 <div
                   className="mh-status-pill mh-status-warming"
-                  title="Backend is starting up (Render free tier cold start, ~30 s)"
+                  title="Waking the backend up — Render free tier needs 30–55 s after idle"
+                >
+                  <Loader2 size={11} strokeWidth={2.6} className="mh-status-spin" />
+                  {t('status.connecting', 'Connecting…')}
+                </div>
+              );
+            }
+            // Search completed but we fell back to bundled/mock data:
+            // don't lie about being ONLINE.  The warmup retry will swap
+            // this for real data once it confirms backend is ready.
+            if (usingFallbackData) {
+              return (
+                <div
+                  className="mh-status-pill mh-status-warming"
+                  title="Backend didn't return live data — showing pre-loaded directory while we retry"
                 >
                   <Loader2 size={11} strokeWidth={2.6} className="mh-status-spin" />
                   {t('status.connecting', 'Connecting…')}

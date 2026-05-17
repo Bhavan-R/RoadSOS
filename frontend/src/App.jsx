@@ -235,10 +235,10 @@ export default function App() {
     setTriageOffline(false);
 
     const controller = new AbortController();
-    // 65 s covers Render's worst-case cold-start (55 s) plus some headroom.
-    // The auto-retry on backend-status='ready' handles the case where even
-    // this timeout isn't enough.
-    const hardTimeout = setTimeout(() => controller.abort(), 65_000);
+    // 15 s — fail fast so the user sees the bundled fallback quickly
+    // instead of staring at a blank list for a minute.  The retry-on-warmup
+    // effect upgrades to real data the moment /health succeeds.
+    const hardTimeout = setTimeout(() => controller.abort(), 15_000);
 
     (async () => {
       try {
@@ -356,6 +356,8 @@ export default function App() {
         medicalIdConfigured={medicalIdConfigured}
         onTestCrash={() => setCrashOpen(true)}
         demoMode={DEMO_MODE}
+        searchLoading={searchLoading}
+        usingFallbackData={!!searchData && !searchHasRealData}
       />
 
       {/* ── (Legacy) Sticky Telemetry Header — kept hidden by CSS .has-map-hero override ── */}
