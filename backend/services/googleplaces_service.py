@@ -205,7 +205,7 @@ async def enrich_missing_phones(
             return_exceptions=True,
         )
     enriched_count = 0
-    for c, phone in zip(needs_phone, results):
+    for c, phone in zip(needs_phone, results, strict=False):
         # gather() can return an Exception per task when return_exceptions=True;
         # treat exceptions as "no phone found" and move on.
         if isinstance(phone, BaseException):
@@ -269,7 +269,9 @@ async def search_nearby_places(
                 if not category:
                     continue
                 seen_ids.add(place_id)
-                places_to_enrich.append({"place": place, "category": category, "place_id": place_id})
+                places_to_enrich.append(
+                    {"place": place, "category": category, "place_id": place_id}
+                )
 
         # ─── PARALLEL Place Details lookups ─────────────────────────────
         # Was up to 20 sequential awaits × 5-10 s each = 100-200 s.
@@ -282,7 +284,7 @@ async def search_nearby_places(
             return_exceptions=True,
         )
 
-        for item, details in zip(places_to_enrich, details_list):
+        for item, details in zip(places_to_enrich, details_list, strict=False):
             if isinstance(details, BaseException):
                 logger.warning("Place Details failed for %s: %s", item["place_id"], details)
                 details = {"phone": None, "isOpen": None}

@@ -80,7 +80,7 @@ async def _with_budget(coro, budget_s: float, label: str, fallback):
     """Run coro with a hard wall-clock cap.  Return fallback on timeout."""
     try:
         return await asyncio.wait_for(coro, timeout=budget_s)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("%s exceeded %.0fs budget — using fallback", label, budget_s)
         return fallback
     except Exception as exc:
