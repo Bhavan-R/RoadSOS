@@ -26,7 +26,7 @@ import LanguagePicker from './components/LanguagePicker';
 import { hasUserChosenLanguage } from './i18n';
 import { requestMotionPermission } from './hooks/useLocation';
 import { DEMO_MODE } from './utils/demoMode';
-import { startBackendWarmup } from './utils/backendWarmup';
+import { startBackendWarmup, subscribeBackendStatus } from './utils/backendWarmup';
 
 // ─── Demo location picker ─────────────────────────────────────────────────────
 const DEMO_LOCATIONS = [
@@ -162,6 +162,21 @@ export default function App() {
     startBackendWarmup();
   }, []);
 
+  // Auto-retry search when backend finishes cold-starting.
+  // Render free tier takes 35–55 s to cold-start.  If the first /search
+  // attempt times out (30 s abort) before the dyno is ready, the warmup
+  // utility will eventually get a /health 200 and flip status → 'ready'.
+  // At that point, if we still have no real data, bump searchRetry so the
+  // search effect re-runs against the now-warm backend.
+  useEffect(() => {
+    const unsub = subscribeBackendStatus((status) => {
+      if (status === 'ready' && !searchHasRealData && (searchLat != null)) {
+        setSearchRetry((n) => n + 1);
+      }
+    });
+    return unsub;
+  }, [searchHasRealData, searchLat]);
+
   // Listen for SOS dispatch events to open the dispatch screen
   useEffect(() => {
     const onDispatch = (e) => {
@@ -188,6 +203,10 @@ export default function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [cachedAt, setCachedAt] = useState(null);
+  // searchRetry increments when the backend warms up after a failed attempt,
+  // triggering a fresh search automatically without the user having to reload.
+  const [searchRetry, setSearchRetry] = useState(0);
+  const searchHasRealData = !!(searchData && !searchData._bundled && !searchData._mock);
 
   const [triageOpen, setTriageOpen] = useState(false);
   const [triageLoading, setTriageLoading] = useState(false);
@@ -208,7 +227,10 @@ export default function App() {
     setTriageOffline(false);
 
     const controller = new AbortController();
-    const hardTimeout = setTimeout(() => controller.abort(), 30_000);
+    // 65 s covers Render's worst-case cold-start (55 s) plus some headroom.
+    // The auto-retry on backend-status='ready' handles the case where even
+    // this timeout isn't enough.
+    const hardTimeout = setTimeout(() => controller.abort(), 65_000);
 
     (async () => {
       try {
@@ -227,7 +249,7 @@ export default function App() {
           const bundled = buildBundledSearchResult(searchLat, searchLon, { maxKm: 80, limit: 8 });
           if (bundled) {
             console.info('[RoadSOS] Live + cache miss — serving bundled directory');
-            setSearchData(bundled);
+            setSearchData({ ...bundled, _bundled: true });
             setSearchError(
               isOnline
                 ? 'Network issue — showing pre-loaded directory.'
@@ -240,6 +262,7 @@ export default function App() {
               ...MOCK_DATA,
               landmark: null,
               country_code: activeLocation?.country_code || MOCK_DATA.country_code,
+              _mock: true,
             });
             setSearchError(
               isOnline
@@ -255,7 +278,9 @@ export default function App() {
     })();
 
     return () => { cancelled = true; controller.abort(); clearTimeout(hardTimeout); };
-  }, [searchLat, searchLon]);
+  // searchRetry increments when the warmup confirms the backend is ready
+  // after a previous attempt failed — triggers a clean retry automatically.
+  }, [searchLat, searchLon, searchRetry]);
 
   const countryCode = searchData?.country_code || activeLocation?.country_code || 'IN';
 
