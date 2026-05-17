@@ -235,10 +235,11 @@ export default function App() {
     setTriageOffline(false);
 
     const controller = new AbortController();
-    // 15 s — fail fast so the user sees the bundled fallback quickly
-    // instead of staring at a blank list for a minute.  The retry-on-warmup
-    // effect upgrades to real data the moment /health succeeds.
-    const hardTimeout = setTimeout(() => controller.abort(), 15_000);
+    // 25 s — covers the parallelized backend's worst case (Overpass 5-10 s
+    // expansion + concurrent Google phone enrichment 10-15 s) for sparse
+    // rural areas like Jonai.  Dense urban searches still return in 2-5 s.
+    // First-load cold start is handled by the retry-on-warmup effect.
+    const hardTimeout = setTimeout(() => controller.abort(), 25_000);
 
     (async () => {
       try {

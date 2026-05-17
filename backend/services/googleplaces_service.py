@@ -10,6 +10,7 @@ control spend during the hackathon.
 
 from __future__ import annotations
 
+import asyncio
 import itertools
 import logging
 import math
@@ -185,20 +186,34 @@ async def enrich_missing_phones(
         return contacts
 
     logger.info(f"Enriching {len(needs_phone)} contacts with Google phone lookup")
-    enriched_count = 0
+    # PARALLEL via asyncio.gather — was sequential, causing 6 × 15 s = 90 s
+    # in the worst case (real measurement: Jonai/Assam took 122 s end-to-end).
+    # Running concurrently caps the wall-clock at ~15 s regardless of count.
     async with httpx.AsyncClient(timeout=15.0) as client:
-        for c in needs_phone:
-            phone = await enrich_phone_for_contact(
-                client,
-                c["name"],
-                c.get("lat", 0),
-                c.get("lon", 0),
-                api_key,
-                region,
-            )
-            if phone:
-                c["phone"] = phone
-                enriched_count += 1
+        results = await asyncio.gather(
+            *[
+                enrich_phone_for_contact(
+                    client,
+                    c["name"],
+                    c.get("lat", 0),
+                    c.get("lon", 0),
+                    api_key,
+                    region,
+                )
+                for c in needs_phone
+            ],
+            return_exceptions=True,
+        )
+    enriched_count = 0
+    for c, phone in zip(needs_phone, results):
+        # gather() can return an Exception per task when return_exceptions=True;
+        # treat exceptions as "no phone found" and move on.
+        if isinstance(phone, BaseException):
+            logger.warning("Phone enrichment for %s failed: %s", c.get("name"), phone)
+            continue
+        if phone:
+            c["phone"] = phone
+            enriched_count += 1
     logger.info(f"Phone enrichment: {enriched_count}/{len(needs_phone)} found")
     return contacts
 
