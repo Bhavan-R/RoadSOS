@@ -13,7 +13,8 @@
  */
 
 // Production fallback to deployed Render backend if env var is missing.
-const API_BASE = import.meta.env.VITE_API_URL
+// Strip any leading BOM that can appear when pasting into the Vercel dashboard.
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/^﻿/, '')
   || (import.meta.env.PROD ? 'https://roadsos-pl3k.onrender.com' : '');
 
 /**
