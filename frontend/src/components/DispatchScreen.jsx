@@ -7,10 +7,9 @@ import { useTranslation } from 'react-i18next';
  * Shown after SOS dispatched. Mirrors the FinalDispatch (Glass) design.
  */
 export default function DispatchScreen({ open, onClose, location, landmark, contacts = [], topContact, dispatchedAt, isCrash = false, triageReason = null, scenePhoto = null }) {
-  const { t } = useTranslation();
-  const [elapsed, setElapsed] = useState(0);
   const { t, i18n } = useTranslation();
   const isEnglish = i18n.language.startsWith('en');
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     if (!open) return;
