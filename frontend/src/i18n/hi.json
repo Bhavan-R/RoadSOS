@@ -82,6 +82,7 @@
   "plan_trip.quick_fill": "त्वरित गंतव्य:",
   "plan_trip.cache_route": "ऑफ़लाइन उपयोग के लिए मार्ग कैश करें",
   "plan_trip.close": "बंद करें",
+  "plan_trip.done": "हो गया",
   "header.emergency_numbers": "आपातकालीन नंबर",
   "header.always_offline": "हमेशा ऑफ़लाइन",
   "header.nearby_services": "आस-पास की सेवाएँ",

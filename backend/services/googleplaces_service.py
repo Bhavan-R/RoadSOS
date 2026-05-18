@@ -283,7 +283,7 @@ async def search_nearby_places(
 
         # ─── Collect unique places we still need to enrich with Details ─
         places_to_enrich: list[dict] = []
-        for (_, _, fallback_category), places in zip(SEARCH_QUERIES, nearby_results):
+        for (_, _, fallback_category), places in zip(SEARCH_QUERIES, nearby_results, strict=False):
             for place in places:
                 place_id = place.get("place_id", "")
                 if not place_id or place_id in seen_ids:
