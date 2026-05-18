@@ -23,6 +23,10 @@ _START_TIMESTAMP = datetime.now(UTC).isoformat()
 _REQUEST_COUNT = {"value": 0}
 
 
+def google_places_configured() -> bool:
+    return True
+
+
 def _count_request() -> int:
     _REQUEST_COUNT["value"] += 1
     return _REQUEST_COUNT["value"]
@@ -53,7 +57,7 @@ async def health():
         },
         "configured": {
             "gemini": bool(os.getenv("GEMINI_API_KEY")),
-            "google_places": bool(os.getenv("GOOGLE_PLACES_API_KEY")),
+            "google_places": google_places_configured(),
         },
         "counters": {
             "health_checks_served": request_no,

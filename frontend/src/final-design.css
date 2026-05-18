@@ -2912,3 +2912,618 @@
   border-radius: 8px;
   border: 1px solid rgba(59, 130, 246, 0.2);
 }
+
+/* ═════════════════════════════════════════════════════════════════════
+   14. CENTERED MODALS — Medical ID & Route Planner
+   ═════════════════════════════════════════════════════════════════════ */
+
+.modal {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 400px;
+  background: rgba(11, 20, 36, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: modal-zoom-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-sizing: border-box;
+}
+
+@keyframes modal-zoom-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modal__header-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 16px;
+}
+
+.modal__header-icon {
+  font-size: 28px;
+  line-height: 1;
+  background: rgba(59, 130, 246, 0.15);
+  padding: 10px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  flex-shrink: 0;
+}
+
+.modal__header-row h2 {
+  font-family: var(--rs-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.4px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.modal__subtitle {
+  font-family: var(--rs-font-body);
+  font-size: 12px;
+  color: var(--rs-slate-400);
+  line-height: 1.45;
+  margin: 4px 0 0 0;
+}
+
+.modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 16px;
+}
+
+.modal__primary {
+  flex: 1;
+  min-width: 110px;
+  height: 44px;
+  border-radius: 12px;
+  font-family: var(--rs-font-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--rs-blue-700) 0%, var(--rs-blue-500) 100%);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35);
+  transition: all 0.2s ease;
+}
+
+.modal__primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(29, 78, 216, 0.45);
+}
+
+.modal__primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.modal__primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.modal__secondary {
+  flex: 1;
+  min-width: 110px;
+  height: 44px;
+  border-radius: 12px;
+  font-family: var(--rs-font-display);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--rs-slate-300);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.modal__secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.modal__secondary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.modal__secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Medical ID specific styles ─── */
+
+.medical-id__empty {
+  font-family: var(--rs-font-body);
+  font-size: 13px;
+  color: var(--rs-slate-400);
+  text-align: center;
+  padding: 20px;
+  line-height: 1.5;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.medical-id__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.medical-id__name {
+  font-family: var(--rs-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 6px;
+}
+
+.medical-id__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  gap: 12px;
+}
+
+.medical-id__row:last-child {
+  border-bottom: none;
+}
+
+.medical-id__row-label {
+  font-family: var(--rs-font-body);
+  font-size: 12px;
+  color: var(--rs-slate-400);
+  font-weight: 500;
+}
+
+.medical-id__row-value {
+  font-family: var(--rs-font-body);
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 600;
+  text-align: right;
+}
+
+.medical-id__row-value a {
+  color: var(--rs-blue-500);
+  text-decoration: none;
+}
+
+.medical-id__row-value a:hover {
+  text-decoration: underline;
+}
+
+.medical-id__row--hl {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 2px 0;
+}
+
+.medical-id__row--hl .medical-id__row-label {
+  color: #f87171;
+  font-weight: 600;
+}
+
+.medical-id__row--hl .medical-id__row-value {
+  color: #ef4444;
+  font-size: 15px;
+  font-weight: 800;
+  font-family: var(--rs-font-mono);
+}
+
+.medical-id__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.medical-id__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.medical-id__field-label {
+  font-family: var(--rs-font-body);
+  font-size: 11px;
+  color: var(--rs-slate-300);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.medical-id__field input {
+  height: 40px;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-family: var(--rs-font-body);
+  font-size: 13.5px;
+  outline: none;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.medical-id__field input:focus {
+  border-color: var(--rs-blue-500);
+  background: rgba(15, 23, 42, 0.7);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.medical-id__contact-group {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.01);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.medical-id__contact-group-label {
+  font-family: var(--rs-font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rs-slate-200);
+  letter-spacing: -0.1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 6px;
+}
+
+.medical-id__contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.medical-id__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--rs-slate-300);
+  font-weight: 500;
+  margin: 4px 0;
+  user-select: none;
+}
+
+.medical-id__checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--rs-blue-500);
+  cursor: pointer;
+}
+
+.medical-id__clear {
+  background: transparent;
+  border: none;
+  color: var(--rs-red-500);
+  font-family: var(--rs-font-display);
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: opacity 0.2s;
+  align-self: center;
+}
+
+.medical-id__clear:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* ─── Route Planner specific styles ─── */
+
+.route-planner__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+
+.route-planner__arrow {
+  display: none; /* We stack inputs vertically on mobile */
+}
+
+.route-planner__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  position: relative;
+}
+
+.route-planner__field-label {
+  font-family: var(--rs-font-body);
+  font-size: 11px;
+  color: var(--rs-slate-300);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.route-planner__input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.route-planner__input-wrap input {
+  height: 40px;
+  padding: 8px 36px 8px 12px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-family: var(--rs-font-body);
+  font-size: 13.5px;
+  outline: none;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.route-planner__input-wrap input:focus {
+  border-color: var(--rs-blue-500);
+  background: rgba(15, 23, 42, 0.7);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.route-planner__input-status {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.route-planner__input-status--err {
+  color: var(--rs-red-500);
+}
+
+.route-planner__field-hint {
+  font-family: var(--rs-font-body);
+  font-size: 11px;
+  color: var(--rs-slate-400);
+  margin-top: 2px;
+}
+
+.route-planner__field-hint--err {
+  color: var(--rs-red-500);
+}
+
+.route-planner__suggest {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  list-style: none;
+  padding: 4px 0;
+  margin: 0;
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.route-planner__suggest-item {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.route-planner__suggest-item:hover,
+.route-planner__suggest-item.is-active {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.route-planner__suggest-pin {
+  font-size: 14px;
+}
+
+.route-planner__suggest-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.route-planner__suggest-primary {
+  font-family: var(--rs-font-body);
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-planner__suggest-context {
+  font-family: var(--rs-font-body);
+  font-size: 11px;
+  color: var(--rs-slate-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-planner__quick-row {
+  display: flex;
+  margin-top: 4px;
+}
+
+.route-planner__locate-btn {
+  background: transparent;
+  border: none;
+  color: var(--rs-blue-500);
+  font-family: var(--rs-font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.2s;
+}
+
+.route-planner__locate-btn:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.route-planner__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.route-planner__chips-label {
+  font-family: var(--rs-font-body);
+  font-size: 11px;
+  color: var(--rs-slate-400);
+  font-weight: 500;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.route-planner__chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: var(--rs-slate-200);
+  font-family: var(--rs-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.route-planner__chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.route-planner__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.route-planner__progress-label {
+  font-family: var(--rs-font-body);
+  font-size: 12px;
+  color: var(--rs-slate-300);
+  font-weight: 500;
+}
+
+.route-planner__progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.route-planner__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--rs-blue-700), var(--rs-blue-500));
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.route-planner__result {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  padding: 12px;
+  font-family: var(--rs-font-body);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.route-planner__result--ok {
+  background: rgba(34, 197, 94, 0.06);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.route-planner__result--ok strong {
+  color: #ffffff;
+}
+
+.route-planner__result-sub {
+  font-size: 11px;
+  color: var(--rs-slate-400);
+  margin-top: 4px;
+}
+
+.route-planner__result--err {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}

@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 OVERPASS_FALLBACK_URLS = [
+    "https://overpass.kumi.systems/api/interpreter",  # community mirror — 2-3× faster in India
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",  # community mirror
     "https://overpass.openstreetmap.fr/api/interpreter",
 ]
 OVERPASS_TIMEOUT = 30.0

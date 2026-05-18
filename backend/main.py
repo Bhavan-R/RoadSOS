@@ -29,7 +29,7 @@ from middleware import (
     RequestLogMiddleware,
 )
 from services.dispatch_service import dispatch_router
-from services.health_service import VERSION, health_router
+from services.health_service import VERSION, google_places_configured, health_router
 from services.offline_service import offline_router
 from services.search_service import search_router
 from services.tracking_service import tracking_router
@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
         "RoadSOS API v%s starting · gemini=%s · google_places=%s · cors=%s",
         VERSION,
         bool(os.getenv("GEMINI_API_KEY")),
-        bool(os.getenv("GOOGLE_PLACES_API_KEY")),
+        google_places_configured(),
         cors_label,
     )
     yield

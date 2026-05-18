@@ -236,3 +236,5 @@ Thumbs.db
 # Claude Code worktrees
 .claude/
 
+.vercel
+.env*.local

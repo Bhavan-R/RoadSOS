@@ -88,17 +88,23 @@ async def _with_budget(coro, budget_s: float, label: str, fallback):
         return fallback
 
 
-async def _safe_overpass(lat: float, lon: float) -> list[dict]:
-    """Try Overpass at 5km, expand to 10km if sparse. Never raises."""
+async def _safe_overpass(lat: float, lon: float, radius: int = 5000) -> list[dict]:
+    """Try Overpass at given radius. Expands to 10km then 20km if sparse. Never raises."""
     try:
-        results = await build_and_fetch_query(lat, lon, radius=5000)
-        if len(results) < 3:
+        results = await build_and_fetch_query(lat, lon, radius=radius)
+        # Expand to 10km and 20km if sparse (rural India support)
+        if len(results) < 10:
             try:
                 wider = await build_and_fetch_query(lat, lon, radius=10000)
-                if len(wider) > len(results):
-                    results = wider
+                results.extend(wider)
             except Exception as exc:
                 logger.warning("Overpass 10km expansion failed: %s", exc)
+        if len(results) < 10:
+            try:
+                widest = await build_and_fetch_query(lat, lon, radius=20000)
+                results.extend(widest)
+            except Exception as exc:
+                logger.warning("Overpass 20km expansion failed: %s", exc)
         return results
     except Exception as exc:
         logger.warning("Overpass primary query failed: %s", exc)
@@ -158,10 +164,10 @@ async def search_facilities(
 
     # ─── Phase 2: Google Places (uses country_code from geo), budgeted ───
     # Run only if needed — keeps Google quota down when OSM already has
-    # enough phoned contacts. Threshold: 3 dialable phones.
+    # enough phoned contacts. Threshold: 10 dialable phones.
     phoned_osm = [c for c in osm_contacts if c.get("phone")]
     google_contacts: list[dict] = []
-    if len(phoned_osm) < 3:
+    if len(phoned_osm) < 10:
         google_contacts = await _with_budget(
             _safe_google(lat, lon, geo.get("country_code")),
             GOOGLE_BUDGET_S,
@@ -176,8 +182,9 @@ async def search_facilities(
 
     # ─── Phase 4: phone enrichment for top closest phoneless contacts ────
     # Budget-capped: partial enrichment is better than blowing the timeout.
+    # Reduced from 6 to 3 to speed up: 3 lookups × find-place + details is fast enough.
     merged = await _with_budget(
-        enrich_missing_phones(merged, region=geo.get("country_code"), max_lookups=6),
+        enrich_missing_phones(merged, region=geo.get("country_code"), max_lookups=3),
         ENRICH_BUDGET_S,
         "phone-enrichment",
         merged,  # if enrichment times out, return unenriched contacts

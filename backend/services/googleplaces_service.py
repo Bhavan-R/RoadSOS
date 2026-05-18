@@ -1,10 +1,10 @@
 """Google Places fallback for sparse OSM regions.
 
-Only invoked when Overpass returns fewer than 3 results at the expanded radius.
+Only invoked when Overpass returns fewer than 10 results at the expanded radius.
 We use Nearby Search to find places, then Place Details for each to get the
 phone number (the Nearby endpoint does not return phones).
 
-Costs money beyond the free tier. Capped to top 5 places per type per call to
+Costs money beyond the free tier. Capped to top 8 places per type per call to
 control spend during the hackathon.
 """
 
@@ -17,6 +17,7 @@ import math
 import os
 
 import httpx
+from unidecode import unidecode
 
 from services.cache import google_cache, location_key
 from services.phone_utils import normalize_phone
@@ -51,7 +52,17 @@ def _next_key() -> str:
     return next(_key_cycle)  # type: ignore[arg-type]
 
 
-SEARCH_TYPES = ["hospital", "police", "car_repair", "fire_station"]
+# (type, keyword, category) tuples — enables both native type queries and keyword fallback
+SEARCH_QUERIES: list[tuple[str | None, str | None, str]] = [
+    ("hospital", None, "hospital"),
+    ("police", None, "police"),
+    ("car_repair", None, "repair"),
+    ("fire_station", None, "ambulance"),
+    # Keyword queries for categories Google has no native type for
+    (None, "tyre puncture repair", "tyre"),
+    (None, "towing service", "towing"),
+    (None, "car showroom dealership", "showroom"),
+]
 
 TYPE_CATEGORY_MAP = {
     "hospital": "hospital",
@@ -59,6 +70,9 @@ TYPE_CATEGORY_MAP = {
     "police": "police",
     "car_repair": "repair",
     "fire_station": "ambulance",
+    "tyre": "tyre",
+    "towing": "towing",
+    "showroom": "showroom",
 }
 
 
@@ -118,11 +132,13 @@ async def enrich_phone_for_contact(
        e.g. "gs sustom" won't match "GS Custom" by text, but they share coordinates
     """
     # ── Step 1: name-based lookup ────────────────────────────────────────
+    # Transliterate non-Latin names (Devanagari, Bengali, etc.) to Latin for Google lookup
+    lookup_name = unidecode(name) if name else ""
     try:
         resp = await client.get(
             FINDPLACE_URL,
             params={
-                "input": name,
+                "input": lookup_name,
                 "inputtype": "textquery",
                 "locationbias": f"circle:500@{lat},{lon}",
                 "fields": "place_id",
@@ -238,34 +254,38 @@ async def search_nearby_places(
         # ─── PARALLEL Nearby Search across all SEARCH_TYPES ─────────────
         # Previously sequential: 4 categories × 5-10 s = 20-40 s.
         # Now ~5-10 s total (slowest category bounds the wall clock).
-        async def _nearby(place_type: str) -> list[dict]:
+        async def _nearby(place_type: str | None, keyword: str | None) -> list[dict]:
             try:
-                resp = await client.get(
-                    NEARBY_URL,
-                    params={
-                        "location": f"{lat},{lon}",
-                        "radius": radius,
-                        "type": place_type,
-                        "key": api_key,
-                    },
-                )
-                return resp.json().get("results", [])[:5]
+                params = {
+                    "location": f"{lat},{lon}",
+                    "radius": radius,
+                    "key": api_key,
+                    "language": "en",
+                }
+                if place_type:
+                    params["type"] = place_type
+                if keyword:
+                    params["keyword"] = keyword
+                resp = await client.get(NEARBY_URL, params=params)
+                return resp.json().get("results", [])[:8]
             except Exception as exc:
-                logger.warning(f"Google Places nearby query failed for {place_type}: {exc}")
+                query_label = place_type or keyword or "unknown"
+                logger.warning(f"Google Places nearby query failed for {query_label}: {exc}")
                 return []
 
         nearby_results = await asyncio.gather(
-            *[_nearby(pt) for pt in SEARCH_TYPES], return_exceptions=False
+            *[_nearby(place_type, keyword) for place_type, keyword, _ in SEARCH_QUERIES],
+            return_exceptions=False,
         )
 
         # ─── Collect unique places we still need to enrich with Details ─
         places_to_enrich: list[dict] = []
-        for places in nearby_results:
+        for (_, _, fallback_category), places in zip(SEARCH_QUERIES, nearby_results):
             for place in places:
                 place_id = place.get("place_id", "")
                 if not place_id or place_id in seen_ids:
                     continue
-                category = map_google_types(place.get("types", []))
+                category = map_google_types(place.get("types", [])) or fallback_category
                 if not category:
                     continue
                 seen_ids.add(place_id)
