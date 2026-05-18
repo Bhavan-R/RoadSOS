@@ -257,7 +257,7 @@ export default function App() {
 
     (async () => {
       try {
-        const data = await searchNearby(searchLat, searchLon, controller.signal);
+        const data = await searchNearby(searchLat, searchLon, controller.signal, activeLocation?.accuracy);
         if (cancelled) return;
         setSearchData(data);
         saveSearchResult(searchLat, searchLon, data);

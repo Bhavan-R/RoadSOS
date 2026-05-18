@@ -37,7 +37,7 @@ OVERPASS_FALLBACK_URLS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.openstreetmap.fr/api/interpreter",
 ]
-OVERPASS_TIMEOUT = 30.0
+OVERPASS_TIMEOUT = 12.0  # reduced from 30s: fail-fast on slow endpoints, mirrors provide fallback
 OVERPASS_RETRIES = 3
 DEDUP_RADIUS_M = 50  # 50-metre clustering radius
 

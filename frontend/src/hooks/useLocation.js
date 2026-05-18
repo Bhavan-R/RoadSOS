@@ -281,6 +281,26 @@ export function useLocation({ onCrashDetected } = {}) {
       return;
     }
 
+    // ─── Coarse fix first (network/wifi positioning in ~1–2 s) ──────────────
+    // Fire getCurrentPosition with low accuracy first to show *something* on
+    // the map immediately. Then the high-accuracy watchPosition upgrades it.
+    // Big perceived-speed win for users on slow GPS locks.
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled || gotFirstFixRef.current) return;  // watch already won
+        const { latitude, longitude, accuracy } = pos.coords;
+        setLocation({
+          lat: latitude,
+          lon: longitude,
+          accuracy,
+          source: 'gps_coarse',
+        });
+        setLoading(false);  // unblock UI immediately
+      },
+      () => {},  // silent — watchPosition will still try for high accuracy
+      { enableHighAccuracy: false, timeout: 3000, maximumAge: 30_000 }
+    );
+
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         if (cancelled) return;

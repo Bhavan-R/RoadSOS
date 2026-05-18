@@ -8,8 +8,11 @@
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/^﻿/, '')
   || (import.meta.env.PROD ? 'https://roadsos-pl3k.onrender.com' : '');
 
-export async function searchNearby(lat, lon, signal) {
-  const res = await fetch(`${API_BASE}/search?lat=${lat}&lon=${lon}`, { signal });
+export async function searchNearby(lat, lon, signal, accuracy = null) {
+  // Pass accuracy to backend so it can dynamically choose search radius
+  const params = new URLSearchParams({ lat, lon });
+  if (accuracy != null) params.append('accuracy', accuracy);
+  const res = await fetch(`${API_BASE}/search?${params}`, { signal });
   if (!res.ok) throw new Error(`Search failed: ${res.status}`);
   return res.json();
 }

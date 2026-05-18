@@ -73,7 +73,7 @@ def deduplicate(contacts: list[dict]) -> list[dict]:
 GEOCODE_BUDGET_S = 5.0
 OVERPASS_BUDGET_S = 10.0
 GOOGLE_BUDGET_S = 12.0
-ENRICH_BUDGET_S = 10.0
+ENRICH_BUDGET_S = 5.0  # reduced from 10.0: 3 lookups typically finish in <2 s
 
 
 async def _with_budget(coro, budget_s: float, label: str, fallback):
@@ -151,8 +151,11 @@ async def search_facilities(
     lon: float = Query(..., ge=-180, le=180, description="Longitude, WGS84"),
     _: None = Depends(_check_rate_limit),
 ):
-    # ─── Phase 1: geocode + Overpass in parallel, each with hard budget ──
-    geo, osm_contacts = await asyncio.gather(
+    # ─── Phase 1: geocode, Overpass, AND Google in parallel ────────────────
+    # Fire all three at once. Google doesn't need country_code upfront; it can
+    # use language='en' everywhere. This reduces wall-clock from sequential
+    # geo→osm→google to max(geo, osm, google) — saves 10+ s in sparse areas.
+    geo, osm_contacts, google_contacts = await asyncio.gather(
         _with_budget(
             _safe_geocode(lat, lon),
             GEOCODE_BUDGET_S,
@@ -160,27 +163,20 @@ async def search_facilities(
             {"landmark": f"{lat:.4f}°, {lon:.4f}°", "country_code": None},
         ),
         _with_budget(_safe_overpass(lat, lon), OVERPASS_BUDGET_S, "overpass", []),
-    )
-
-    # ─── Phase 2: Google Places (uses country_code from geo), budgeted ───
-    # Run only if needed — keeps Google quota down when OSM already has
-    # enough phoned contacts. Threshold: 10 dialable phones.
-    phoned_osm = [c for c in osm_contacts if c.get("phone")]
-    google_contacts: list[dict] = []
-    if len(phoned_osm) < 10:
-        google_contacts = await _with_budget(
-            _safe_google(lat, lon, geo.get("country_code")),
+        _with_budget(
+            _safe_google(lat, lon, None),  # country_code not needed for base query
             GOOGLE_BUDGET_S,
             "google-places",
             [],
-        )
+        ),
+    )
 
-    # ─── Phase 3: merge, dedupe, sort ────────────────────────────────────
+    # ─── Phase 2: merge, dedupe, sort ────────────────────────────────────
     merged = deduplicate((osm_contacts or []) + (google_contacts or []))
     with contextlib.suppress(Exception):  # malformed contact shouldn't break the response
         merged.sort(key=lambda x: x.get("distance", float("inf")))
 
-    # ─── Phase 4: phone enrichment for top closest phoneless contacts ────
+    # ─── Phase 3: phone enrichment for top closest phoneless contacts ────
     # Budget-capped: partial enrichment is better than blowing the timeout.
     # Reduced from 6 to 3 to speed up: 3 lookups × find-place + details is fast enough.
     merged = await _with_budget(

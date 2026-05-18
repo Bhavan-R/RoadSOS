@@ -60,8 +60,8 @@ SEARCH_QUERIES: list[tuple[str | None, str | None, str]] = [
     ("fire_station", None, "ambulance"),
     # Keyword queries for categories Google has no native type for
     (None, "tyre puncture repair", "tyre"),
-    (None, "towing service", "towing"),
-    (None, "car showroom dealership", "showroom"),
+    (None, "puncture wala tire shop", "tyre"),  # Indian colloquial — catches more local shops
+    (None, "towing service crane recovery", "towing"),  # broader match for recovery/wrecker services
 ]
 
 TYPE_CATEGORY_MAP = {
@@ -258,10 +258,13 @@ async def search_nearby_places(
             try:
                 params = {
                     "location": f"{lat},{lon}",
-                    "radius": radius,
                     "key": api_key,
                     "language": "en",
                 }
+                # Use rankby=distance for accuracy: returns nearest results first, not
+                # prominence-ranked. Mutually exclusive with radius.
+                params["rankby"] = "distance"
+
                 if place_type:
                     params["type"] = place_type
                 if keyword:

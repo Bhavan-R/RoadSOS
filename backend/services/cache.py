@@ -71,9 +71,11 @@ class TTLCache:
 def location_key(lat: float, lon: float, suffix: str = "") -> str:
     """Cache key for a location.
 
-    Rounded to 4 decimal places (~11 metres) so very close requests share results.
+    Rounded to 3 decimal places (~110 metres) to increase cache hit rate during
+    demos when the same area is queried repeatedly. Still precise enough for
+    emergency services categorization.
     """
-    base = f"{lat:.4f}_{lon:.4f}"
+    base = f"{lat:.3f}_{lon:.3f}"
     return f"{base}_{suffix}" if suffix else base
 
 
