@@ -208,5 +208,9 @@
   "dispatch.minor": "ছোটখাটো ঘটনা। কোনো আঘাত নেই।",
   "dispatch.send_services": "অনুগ্রহ করে অবিলম্বে জরুরি সেবা পাঠান।",
   "dispatch.plus_code": "অবস্থানের প্লাস কোড",
-  "dispatch.gps_coords": "জিপিএস স্থানাঙ্ক"
+  "dispatch.gps_coords": "জিপিএস স্থানাঙ্ক",
+  "scene.photo_label": "Accident scene photo",
+  "scene.photo_hint": "Captured automatically at time of SOS",
+  "scene.capturing": "Capturing scene…",
+  "scene.no_camera": "Scene photo unavailable"
 }

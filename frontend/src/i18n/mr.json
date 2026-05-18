@@ -208,5 +208,9 @@
   "dispatch.minor": "किरकोळ घटना. कोणतीही जखम नाही.",
   "dispatch.send_services": "कृपया ताबडतोब आपत्कालीन सेवा पाठवा.",
   "dispatch.plus_code": "स्थान प्लस कोड",
-  "dispatch.gps_coords": "जीपीएस निर्देशांक"
+  "dispatch.gps_coords": "जीपीएस निर्देशांक",
+  "scene.photo_label": "Accident scene photo",
+  "scene.photo_hint": "Captured automatically at time of SOS",
+  "scene.capturing": "Capturing scene…",
+  "scene.no_camera": "Scene photo unavailable"
 }

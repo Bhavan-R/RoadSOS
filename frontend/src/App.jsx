@@ -151,6 +151,7 @@ export default function App() {
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [dispatchedAt, setDispatchedAt] = useState(null);
   const [dispatchContext, setDispatchContext] = useState({ isCrash: false, reason: null });
+  const [scenePhoto, setScenePhoto] = useState(null);
 
   const {
     location: gpsLocation,
@@ -178,6 +179,7 @@ export default function App() {
         isCrash: e.detail?.isCrash || false,
         reason: e.detail?.reason || null
       });
+      if (e.detail?.scenePhoto) setScenePhoto(e.detail.scenePhoto);
       setDispatchOpen(true);
     };
     window.addEventListener('roadsos:sos-sent', onDispatch);
@@ -569,7 +571,7 @@ export default function App() {
       {/* ── Full-screen Dispatch Glass overlay (after SOS sent) ── */}
       <DispatchScreen
         open={dispatchOpen}
-        onClose={() => setDispatchOpen(false)}
+        onClose={() => { setDispatchOpen(false); setScenePhoto(null); }}
         location={activeLocation}
         landmark={searchData?.landmark}
         contacts={searchData?.contacts || []}
@@ -577,6 +579,7 @@ export default function App() {
         dispatchedAt={dispatchedAt}
         isCrash={dispatchContext.isCrash}
         triageReason={dispatchContext.reason}
+        scenePhoto={scenePhoto}
       />
     </div>
   );

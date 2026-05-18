@@ -208,5 +208,9 @@
   "dispatch.minor": "சிறிய சம்பவம். காயங்கள் இல்லை.",
   "dispatch.send_services": "உடனடியாக அவசர சேவைகளை அனுப்புங்கள்.",
   "dispatch.plus_code": "இட பிளஸ் குறியீடு",
-  "dispatch.gps_coords": "ஜிபிஎஸ் ஆயங்கள்"
+  "dispatch.gps_coords": "ஜிபிஎஸ் ஆயங்கள்",
+  "scene.photo_label": "Accident scene photo",
+  "scene.photo_hint": "Captured automatically at time of SOS",
+  "scene.capturing": "Capturing scene…",
+  "scene.no_camera": "Scene photo unavailable"
 }

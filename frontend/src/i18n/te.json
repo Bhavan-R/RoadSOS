@@ -208,5 +208,9 @@
   "dispatch.minor": "చిన్న సంఘటన. గాయాలు లేవు.",
   "dispatch.send_services": "దయచేసి వెంటనే అత్యవసర సేవలు పంపండి.",
   "dispatch.plus_code": "స్థాన ప్లస్ కోడ్",
-  "dispatch.gps_coords": "జిపిఎస్ నిర్దేశాంకాలు"
+  "dispatch.gps_coords": "జిపిఎస్ నిర్దేశాంకాలు",
+  "scene.photo_label": "Accident scene photo",
+  "scene.photo_hint": "Captured automatically at time of SOS",
+  "scene.capturing": "Capturing scene…",
+  "scene.no_camera": "Scene photo unavailable"
 }

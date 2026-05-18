@@ -6,6 +6,7 @@ import { encodePlusCode } from '../utils/plusCodes';
 import { isWaCountry } from '../utils/sosDispatch';
 import { triggerSOSAlert } from '../utils/sosAlert';
 import { createTrackingSession } from '../utils/trackingSession';
+import i18n from '../i18n/index.js';
 
 function cleanPhone(raw) {
   return (raw || '').replace(/[^\d+]/g, '');
@@ -43,7 +44,15 @@ export default function SOSButton({ location, landmark, countryCode, onFirstTap 
     if (!hasLocation) return { body: '', primaryWaUrl: '', allSmsUrl: '', perContact: [] };
 
     const plusCode = encodePlusCode(location.lat, location.lon);
-    const msgBody  = buildSosSmsBody({ lat: location.lat, lon: location.lon, plusCode, landmark });
+    // Pass the translation function + language so the message is bilingual
+    // (native language block first, then English block for paramedics).
+    const tNative = i18n.t.bind(i18n);
+    const lang    = i18n.language || 'en';
+    const msgBody = buildSosSmsBody(
+      { lat: location.lat, lon: location.lon, plusCode, landmark },
+      tNative,
+      lang,
+    );
 
     if (contacts.length === 0) {
       const enc = encodeURIComponent(msgBody);
@@ -68,12 +77,14 @@ export default function SOSButton({ location, landmark, countryCode, onFirstTap 
   }, [hasLocation, location?.lat, location?.lon, landmark, phonesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Primary SOS tap ───────────────────────────────────────────────────────
-  const handleSOS = () => {
+  const handleSOS = async () => {
     if (!tappedRef.current) { tappedRef.current = true; onFirstTap?.(); }
     if (!hasLocation) return;
 
-    // ① Audio + torch alert — fire immediately inside the gesture handler
-    triggerSOSAlert();
+    // ① Audio + scene photo capture + torch alert — fire immediately inside
+    //   the gesture handler so the camera permission prompt (if any) is
+    //   triggered by the user's tap (required by browser security policy).
+    const scenePhoto = await triggerSOSAlert();
 
     // ② Open the primary SOS channel (WA / SMS)
     if (preferWA && hasContacts) {
@@ -108,10 +119,10 @@ export default function SOSButton({ location, landmark, countryCode, onFirstTap 
       setTrackLoading(false);
     });
 
-    // Notify the app that SOS was sent (opens DispatchScreen)
+    // ④ Notify the app that SOS was sent (opens DispatchScreen with scene photo)
     try {
       window.dispatchEvent(new CustomEvent('roadsos:sos-sent', {
-        detail: { location, landmark, countryCode, contacts },
+        detail: { location, landmark, countryCode, contacts, scenePhoto },
       }));
     } catch {}
   };

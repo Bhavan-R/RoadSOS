@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Ambulance, Navigation2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * DispatchScreen — full-screen "Help is on the way" overlay.
  * Shown after SOS dispatched. Mirrors the FinalDispatch (Glass) design.
  */
-export default function DispatchScreen({ open, onClose, location, landmark, contacts = [], topContact, dispatchedAt, isCrash = false, triageReason = null }) {
+export default function DispatchScreen({ open, onClose, location, landmark, contacts = [], topContact, dispatchedAt, isCrash = false, triageReason = null, scenePhoto = null }) {
+  const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -97,6 +99,26 @@ export default function DispatchScreen({ open, onClose, location, landmark, cont
         </div>
 
         <div className="dx-rows">
+          {/* Scene photo — shown when camera captured the accident scene */}
+          {scenePhoto && (
+            <div className="dx-row dx-row--photo">
+              <div style={{ width: '100%' }}>
+                <div className="dx-row-label">{t('scene.photo_label', 'ACCIDENT SCENE PHOTO')}</div>
+                <div style={{ marginTop: 8, borderRadius: 10, overflow: 'hidden', border: '1.5px solid #334155' }}>
+                  <img
+                    src={scenePhoto}
+                    alt={t('scene.photo_label', 'Accident scene photo')}
+                    style={{ width: '100%', display: 'block', maxHeight: 220, objectFit: 'cover' }}
+                  />
+                </div>
+                <div className="dx-row-sub" style={{ marginTop: 6 }}>
+                  {t('scene.photo_hint', 'Captured automatically at time of SOS')}
+                </div>
+              </div>
+              <span className="dx-row-tag">CAPTURED</span>
+            </div>
+          )}
+
           <div className="dx-row">
             <div>
               <div className="dx-row-label">LOCATION</div>

@@ -208,5 +208,9 @@
   "dispatch.minor": "मामूली घटना। कोई चोट नहीं।",
   "dispatch.send_services": "कृपया तुरंत आपातकालीन सेवाएँ भेजें।",
   "dispatch.plus_code": "स्थान का प्लस कोड",
-  "dispatch.gps_coords": "जीपीएस निर्देशांक"
+  "dispatch.gps_coords": "जीपीएस निर्देशांक",
+  "scene.photo_label": "दुर्घटना स्थल की फोटो",
+  "scene.photo_hint": "SOS के समय स्वचालित रूप से ली गई",
+  "scene.capturing": "दृश्य कैप्चर हो रहा है…",
+  "scene.no_camera": "दृश्य फोटो उपलब्ध नहीं"
 }

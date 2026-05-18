@@ -208,5 +208,9 @@
   "dispatch.minor": "Minor incident. No injuries reported.",
   "dispatch.send_services": "Please send emergency services immediately.",
   "dispatch.plus_code": "Location plus code",
-  "dispatch.gps_coords": "GPS coordinates"
+  "dispatch.gps_coords": "GPS coordinates",
+  "scene.photo_label": "Accident scene photo",
+  "scene.photo_hint": "Captured automatically at time of SOS",
+  "scene.capturing": "Capturing scene…",
+  "scene.no_camera": "Scene photo unavailable"
 }

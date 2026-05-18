@@ -6,6 +6,7 @@ import { startAlarm, stopAlarm } from '../utils/alarmUtils';
 import { safeAutoDial, guardedTelDial } from '../utils/demoMode';
 import { encodePlusCode } from '../utils/plusCodes';
 import { isWaCountry, buildSosLinks } from '../utils/sosDispatch';
+import { triggerSOSAlert } from '../utils/sosAlert';
 
 const CHOOSE_SECONDS = 10;
 const AUTO_SECONDS   = 4;
@@ -34,6 +35,7 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
   const [copied, setCopied]     = useState(false);
   const [sosSent, setSosSent]   = useState(null);
   const intervalRef             = useRef(null);
+  const scenePhotoRef           = useRef(null);
 
   const callNumber = numbers?.ambulance || numbers?.general || '112';
   const preferWA   = isWaCountry(countryCode);
@@ -79,18 +81,6 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
     startCountdown(CHOOSE_SECONDS, () => triggerAutomatic());
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function dispatchSos() {
-    const links = buildSosLinks(location, landmark);
-    if (!links) return;
-    if (preferWA) {
-      window.open(links.perContact[0].waHref, '_blank');
-      setSosSent({ channel: 'wa', links });
-    } else {
-      window.location.href = links.groupSmsHref;
-      setSosSent({ channel: 'sms', links });
-    }
-  }
-
   // ─── Countdown helper ─────────────────────────────────────────────────
   function startCountdown(from, onZero) {
     clearInterval(intervalRef.current);
@@ -103,13 +93,11 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
     }, 1000);
   }
 
-  // ─── Auto-send SOS to emergency contacts ──────────────────────────────
-  // Called from both fireCall() and triggerManualWithSos().
+  // ─── Dispatch SOS to emergency contacts ───────────────────────────────
   // WA countries  → window.open(wa.me) — opens WhatsApp without navigating away,
   //                 so the ambulance dial setTimeout still fires.
   // SMS countries → window.location.href (group SMS to all) — navigates briefly
-  //                 to SMS app; dial fires when user returns, or they can call
-  //                 from the CALLING screen manually.
+  //                 to SMS app; dial fires when user returns.
   function dispatchSos() {
     const links = buildSosLinks(location, landmark);
     if (!links) return;
@@ -121,6 +109,12 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
       window.location.href = links.groupSmsHref;
       setSosSent({ channel: 'sms', links });
     }
+    // Notify App to open DispatchScreen with scene photo (if captured)
+    try {
+      window.dispatchEvent(new CustomEvent('roadsos:sos-sent', {
+        detail: { isCrash: true, scenePhoto: scenePhotoRef.current },
+      }));
+    } catch {}
   }
 
   // ─── AUTOMATING phase ─────────────────────────────────────────────────
@@ -128,6 +122,8 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
     stopAlarm();
     setPhase(PHASE.AUTOMATING);
     setSpeaking(true);
+    // Capture scene photo when crash is auto-confirmed
+    triggerSOSAlert().then(photo => { scenePhotoRef.current = photo; });
     speakText(dispatchText, { lang: i18n.language || 'en' }).finally(() => setSpeaking(false));
     startCountdown(AUTO_SECONDS, () => fireCall());
   }
@@ -284,8 +280,7 @@ export default function CrashAlert({ open, onConfirm, onCancel, numbers, locatio
         <button className="cf-send-now" onClick={() => {
           clearInterval(intervalRef.current);
           stopAlarm();
-          dispatchSos();
-          fireCall();
+          fireCall();   // fireCall() already calls dispatchSos() internally
         }}>
           Send SOS now
         </button>
