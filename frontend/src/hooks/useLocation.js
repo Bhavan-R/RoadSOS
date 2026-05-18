@@ -39,6 +39,8 @@ async function ipFallback() {
 
 // Custom event name used to sync manual-location state across running hooks.
 const MANUAL_LOC_EVENT = 'roadsos:manual-location';
+// Custom event name used to force a fresh GPS acquisition from anywhere.
+const GPS_REFRESH_EVENT = 'roadsos:gps-refresh';
 
 /**
  * Set location manually (e.g., user taps on map or searches address).
@@ -69,6 +71,27 @@ export function clearManualLocation() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(MANUAL_LOC_EVENT, { detail: null }));
   }
+}
+
+/**
+ * Force a fresh GPS acquisition from anywhere in the app.
+ * Clears any manual override, then signals the live useLocation() hook to
+ * re-acquire a fresh fix (bypassing browser cache via maximumAge: 0).
+ * Returns a promise that resolves when the new fix is set (or after timeout).
+ */
+export function refreshGpsLocation() {
+  // Clear manual override so live GPS can take over
+  try {
+    localStorage.removeItem('roadsos:manual-location');
+  } catch { /* silent */ }
+
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(null);
+    // Dispatch the refresh event with a callback in detail
+    window.dispatchEvent(new CustomEvent(GPS_REFRESH_EVENT, { detail: { resolve } }));
+    // Safety timeout — never block UI longer than 12 s
+    setTimeout(() => resolve(null), 12_000);
+  });
 }
 
 /**
@@ -127,6 +150,52 @@ export function useLocation({ onCrashDetected } = {}) {
     };
     window.addEventListener(MANUAL_LOC_EVENT, handler);
     return () => window.removeEventListener(MANUAL_LOC_EVENT, handler);
+  }, []);
+
+  // ─── Force GPS refresh handler ──────────────────────────────────────────
+  // When refreshGpsLocation() is called from anywhere, force a fresh
+  // getCurrentPosition with maximumAge: 0 (bypasses browser cache) and
+  // commit the result to React state so the UI updates immediately.
+  useEffect(() => {
+    const handler = (e) => {
+      const resolveCb = e?.detail?.resolve;
+      if (!navigator.geolocation) {
+        resolveCb?.(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude, speed, accuracy } = pos.coords;
+          const speedKmh = speed != null ? mpsToKmh(speed) : 0;
+          // Mark this fix as authoritative so subsequent watchPosition
+          // jitter-gate logic doesn't reject it.
+          gotFirstFixRef.current = true;
+          lastReportedRef.current = { lat: latitude, lon: longitude };
+          const newLoc = {
+            lat: latitude,
+            lon: longitude,
+            speedKmh,
+            accuracy,
+            source: accuracy > ACCURACY_WARN_M ? 'gps_low' : 'gps',
+          };
+          setLocation(newLoc);
+          setLoading(false);
+          setError(null);
+          resolveCb?.(newLoc);
+        },
+        (err) => {
+          setError(
+            err.code === 1
+              ? 'Please allow location access to refresh.'
+              : 'GPS refresh failed — try again or move to an open area.'
+          );
+          resolveCb?.(null);
+        },
+        { enableHighAccuracy: true, timeout: 10_000, maximumAge: 0 }
+      );
+    };
+    window.addEventListener(GPS_REFRESH_EVENT, handler);
+    return () => window.removeEventListener(GPS_REFRESH_EVENT, handler);
   }, []);
 
   const speedHistoryRef      = useRef([]);

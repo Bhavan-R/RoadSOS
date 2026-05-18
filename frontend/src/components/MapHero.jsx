@@ -5,7 +5,7 @@ import RealMap from './RealMap';
 import SOSButton from './SOSButton';
 import ManualLocationModal from './ManualLocationModal';
 import { subscribeBackendStatus } from '../utils/backendWarmup';
-import { setManualLocation, clearManualLocation } from '../hooks/useLocation';
+import { setManualLocation, refreshGpsLocation } from '../hooks/useLocation';
 
 const CAT_ICONS = {
   hospital: Hospital,
@@ -114,19 +114,17 @@ export default function MapHero({
   useEffect(() => subscribeBackendStatus(setBackendStatus), []);
 
   // ── Manual location refresh (fixes stale browser geolocation cache on laptops) ──
-  // On Windows Edge / Chrome, browser geolocation can cache old results across
-  // sessions. This button forces a fresh geolocation lookup.
-  const handleRefreshLocation = useCallback(() => {
+  // Clears any manual override, then forces a fresh GPS acquisition via the
+  // useLocation hook's GPS_REFRESH_EVENT — which commits the new position to
+  // React state so activeLocation actually updates (previous version only
+  // toggled the spinner without ever touching state).
+  const handleRefreshLocation = useCallback(async () => {
     setRefreshing(true);
-    if (!navigator.geolocation) {
+    try {
+      await refreshGpsLocation();
+    } finally {
       setRefreshing(false);
-      return;
     }
-    navigator.geolocation.getCurrentPosition(
-      () => setRefreshing(false),
-      () => setRefreshing(false),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
   }, []);
 
   // ── Handle manual location set ──
