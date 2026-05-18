@@ -31,6 +31,10 @@ async function ipFallback() {
     const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
     if (data.latitude && data.longitude) {
+      const org = (data.org || '').toLowerCase();
+      if (org.includes('icloud private relay') || org.includes('apple inc')) {
+        return { error: 'Location hidden by iCloud Private Relay. Please allow GPS or set manually.' };
+      }
       return { lat: data.latitude, lon: data.longitude, country_code: data.country_code };
     }
   } catch { /* silent */ }
@@ -321,13 +325,15 @@ export function useLocation({ onCrashDetected } = {}) {
       if (cancelled || gotFirstFixRef.current) return;
       const fb = await ipFallback();
       if (cancelled || gotFirstFixRef.current) return;   // GPS may have raced in
-      if (fb) {
+      if (fb && !fb.error) {
         setLocation({
           lat: fb.lat, lon: fb.lon,
           country_code: fb.country_code,
           accuracy: null,
           source: 'ip',
         });
+      } else if (fb && fb.error) {
+        setError(fb.error);
       } else {
         setError('Searching for GPS signal — please move to an open area.');
       }
@@ -338,12 +344,16 @@ export function useLocation({ onCrashDetected } = {}) {
       clearTimeout(firstFixTimer);
       ipFallback().then(fb => {
         if (cancelled) return;
-        if (fb) {
+        if (fb && !fb.error) {
           setLocation({
             lat: fb.lat, lon: fb.lon,
             country_code: fb.country_code,
             source: 'ip',
           });
+        } else if (fb && fb.error) {
+          setError(fb.error);
+        } else {
+          setError('Geolocation is not supported by your browser.');
         }
         setLoading(false);
       });
@@ -429,12 +439,15 @@ export function useLocation({ onCrashDetected } = {}) {
           clearTimeout(firstFixTimer);
           const fb = await ipFallback();
           if (cancelled) return;
-          if (fb) {
+          if (fb && !fb.error) {
             setLocation({
               lat: fb.lat, lon: fb.lon,
               country_code: fb.country_code,
               source: 'ip',
             });
+            setError('Please allow location access for better accuracy.');
+          } else if (fb && fb.error) {
+            setError(fb.error);
           } else {
             setError('Please allow location access to use SOS features.');
           }
