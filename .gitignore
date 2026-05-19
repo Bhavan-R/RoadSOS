@@ -238,3 +238,7 @@ Thumbs.db
 
 .vercel
 .env*.local
+docs/*.log
+docs/*.aux
+docs/*.toc
+docs/*.out

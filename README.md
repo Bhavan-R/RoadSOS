@@ -31,6 +31,17 @@
 
 ---
 
+## 📄 Documentation
+
+| Document | Description |
+|---|---|
+| [**Technical Reference** (PDF)](docs/TECHNICAL.pdf) | Full 35-page technical deep-dive: backend orchestration, search-phase budgets, offline tiers, crash detection, i18n, CI/CD, deployment, observability |
+| [**Architecture Review** (Markdown)](docs/ARCHITECTURE.md) | ADR-style post-merge architecture audit: system topology, service interactions, reliability patterns, known risks |
+| [**Hackathon Submission** (PDF)](docs/RoadSOS_Submission.pdf) | Judges' submission package: assumptions, software packages, architecture summary, entire source code verbatim |
+| [**Hackathon Submission** (LaTeX source)](docs/RoadSOS_Submission.tex) | LaTeX source for the submission PDF — rebuild with `python scripts/build_submission_tex.py` |
+
+---
+
 ## 🎯 The Problem
 
 > India records **1.5 lakh road accident deaths every year.** Most are not killed by the crash itself — they are killed by **delay**.
@@ -323,9 +334,16 @@ Roadproj/
 │           └── bundled_facilities.json # 249 facilities × 196 countries
 │
 ├── docs/                             # Engineering documentation
-│   ├── ARCHITECTURE.md               # System design + ADRs + risk assessment
+│   ├── ARCHITECTURE.md               # ADR-style post-merge architecture audit
 │   ├── TECHNICAL.tex                 # LaTeX source for technical reference
-│   └── TECHNICAL.pdf                 # Compiled 21-page PDF
+│   ├── TECHNICAL.pdf                 # Compiled 35-page technical deep-dive
+│   ├── RoadSOS_Submission.tex        # LaTeX source — hackathon submission package
+│   └── RoadSOS_Submission.pdf        # Compiled submission: assumptions + packages + code
+│
+├── scripts/
+│   └── build_submission_tex.py       # Regenerates RoadSOS_Submission.tex + .pdf from source
+│
+├── resolve_i18n_conflicts.mjs        # Utility: resolves Git merge conflicts in i18n JSON files
 │
 ├── .github/workflows/                # 3 CI workflows
 │   ├── frontend-ci.yml               # Build + Vitest on Node 20 & 22
