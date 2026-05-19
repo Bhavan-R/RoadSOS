@@ -1,9 +1,5 @@
 # RoadSOS — Architecture Review
 
-**Branch reviewed:** `main` @ `6fc2869`
-**Date:** 2026-05-16
-**Reviewer:** Architecture audit (post-merge of `arindam-branch-` into `main`)
-
 ---
 
 ## 1. System Overview
