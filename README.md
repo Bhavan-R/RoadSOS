@@ -38,7 +38,6 @@
 | [**Technical Reference** (PDF)](docs/TECHNICAL.pdf) | Full 35-page technical deep-dive: backend orchestration, search-phase budgets, offline tiers, crash detection, i18n, CI/CD, deployment, observability |
 | [**Architecture Review** (Markdown)](docs/ARCHITECTURE.md) | ADR-style post-merge architecture audit: system topology, service interactions, reliability patterns, known risks |
 | [**Hackathon Submission** (PDF)](docs/RoadSOS_Submission.pdf) | Judges' submission package: assumptions, software packages, architecture summary, entire source code verbatim |
-| [**Hackathon Submission** (LaTeX source)](docs/RoadSOS_Submission.tex) | LaTeX source for the submission PDF — rebuild with `python scripts/build_submission_tex.py` |
 
 ---
 
