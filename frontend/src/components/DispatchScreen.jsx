@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Ambulance, Navigation2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { DEMO_MODE } from '../utils/demoMode';
 
 /**
  * DispatchScreen — full-screen "Help is on the way" overlay.
@@ -10,12 +11,45 @@ export default function DispatchScreen({ open, onClose, location, landmark, cont
   const { t, i18n } = useTranslation();
   const isEnglish = i18n.language.startsWith('en');
   const [elapsed, setElapsed] = useState(0);
+  const [batteryPct, setBatteryPct] = useState(null);
+  const [batteryCharging, setBatteryCharging] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     const start = Date.now();
-    const t = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
-    return () => clearInterval(t);
+    const tick = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(tick);
+  }, [open]);
+
+  // ── Battery level via navigator.getBattery() ────────────────────────────
+  // Supported on Chrome/Edge/Opera (Android + desktop). Not on iOS Safari
+  // (returns undefined → we hide the row). Live updates via levelchange.
+  useEffect(() => {
+    if (!open || typeof navigator === 'undefined' || !navigator.getBattery) return;
+    let battery = null;
+    let mounted = true;
+
+    const updateLevel = () => {
+      if (!mounted || !battery) return;
+      setBatteryPct(Math.round(battery.level * 100));
+      setBatteryCharging(!!battery.charging);
+    };
+
+    navigator.getBattery().then(b => {
+      if (!mounted) return;
+      battery = b;
+      updateLevel();
+      b.addEventListener('levelchange', updateLevel);
+      b.addEventListener('chargingchange', updateLevel);
+    }).catch(() => { /* unsupported — leave batteryPct null */ });
+
+    return () => {
+      mounted = false;
+      if (battery) {
+        battery.removeEventListener('levelchange', updateLevel);
+        battery.removeEventListener('chargingchange', updateLevel);
+      }
+    };
   }, [open]);
 
   if (!open) return null;
@@ -70,7 +104,7 @@ export default function DispatchScreen({ open, onClose, location, landmark, cont
             <span className="dx-pill-dot" />
             LIVE
           </span>
-          <span className="dx-pill dx-pill-demo">DEMO</span>
+          {DEMO_MODE && <span className="dx-pill dx-pill-demo">DEMO</span>}
         </div>
       </div>
 
@@ -192,17 +226,21 @@ export default function DispatchScreen({ open, onClose, location, landmark, cont
             </>
           )}
 
-          <div className="dx-row">
-            <div>
-              <div className="dx-row-label">
-                <BilingualInline tKey="dispatch.battery" engFallback="BATTERY" />
+          {/* Battery row — only rendered when the device exposes the
+              Battery Status API (Chrome/Edge/Android). Hidden on iOS Safari. */}
+          {batteryPct !== null && (
+            <div className="dx-row">
+              <div>
+                <div className="dx-row-label">
+                  <BilingualInline tKey="dispatch.battery" engFallback="BATTERY" />
+                </div>
+                <div className="dx-row-value dx-row-value-mono dx-row-blue">
+                  {batteryPct}%{batteryCharging && ' ⚡'}
+                </div>
               </div>
-              <div className="dx-row-value dx-row-value-mono dx-row-blue">
-                {typeof navigator !== 'undefined' && navigator.getBattery ? '—%' : '—%'}
-              </div>
+              <span className="dx-row-tag">{t('dispatch.captured', 'CAPTURED')}</span>
             </div>
-            <span className="dx-row-tag">{t('dispatch.captured', 'CAPTURED')}</span>
-          </div>
+          )}
         </div>
 
         {/* Your circle */}

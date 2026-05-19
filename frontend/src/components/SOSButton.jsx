@@ -77,41 +77,52 @@ export default function SOSButton({ location, landmark, countryCode, onFirstTap 
   }, [hasLocation, location?.lat, location?.lon, landmark, phonesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Primary SOS tap ───────────────────────────────────────────────────────
+  // CRITICAL: `window.open` must fire SYNCHRONOUSLY inside the click handler.
+  // Browsers strip the "user gesture" flag after any `await`, so a popup opened
+  // post-await gets silently blocked.  We therefore open the dispatch channel
+  // FIRST (synchronously) and only then await the camera/alarm side effects.
   const handleSOS = async () => {
     if (!tappedRef.current) { tappedRef.current = true; onFirstTap?.(); }
     if (!hasLocation) return;
 
-    // ① Audio + scene photo capture + torch alert — fire immediately inside
-    //   the gesture handler so the camera permission prompt (if any) is
-    //   triggered by the user's tap (required by browser security policy).
-    const scenePhoto = await triggerSOSAlert();
-
-    // ② Open the primary SOS channel (WA / SMS)
+    // ① Open the primary SOS channel SYNCHRONOUSLY — must run in the original
+    //    gesture frame or the popup gets blocked.
+    let dispatchWindow = null;
     if (preferWA && hasContacts) {
-      window.open(primaryWaUrl, '_blank');
+      dispatchWindow = window.open(primaryWaUrl, '_blank');
     } else if (!preferWA && contacts.length > 1) {
+      // Multi-contact SMS — single SMS app navigation reaches all contacts
       window.location.href = allSmsUrl;
     } else if (hasContacts) {
-      const win = window.open(primaryWaUrl, '_blank');
-      setTimeout(() => {
-        if (!win || win.closed || win.closed === undefined) {
-          window.location.href = perContact[0]?.smsHref || allSmsUrl;
-        }
-      }, 800);
+      dispatchWindow = window.open(primaryWaUrl, '_blank');
     } else {
-      const win = window.open(primaryWaUrl, '_blank');
-      setTimeout(() => {
-        if (!win || win.closed || win.closed === undefined) {
-          window.location.href = allSmsUrl;
-        }
-      }, 800);
+      // No medical ID contacts — fire WhatsApp share dialog (no recipient)
+      dispatchWindow = window.open(primaryWaUrl, '_blank');
     }
 
     setSent(true);
     setDispatched(true);
     setTimeout(() => setSent(false), 2500);
 
-    // ③ Create a live-tracking session in the background — non-blocking
+    // ② SMS fallback if WhatsApp didn't open (deferred — gesture is gone, but
+    //    `location.href` doesn't need it).  Only when WA path was attempted.
+    if (preferWA && hasContacts) {
+      setTimeout(() => {
+        if (!dispatchWindow || dispatchWindow.closed) {
+          // WA likely blocked or not installed — fall back to SMS
+          window.location.href = perContact[0]?.smsHref || allSmsUrl;
+        }
+      }, 1200);
+    }
+
+    // ③ Trigger audio + torch + scene photo capture in the background.
+    //    These can run AFTER window.open without breaking it.
+    let scenePhoto = null;
+    try {
+      scenePhoto = await triggerSOSAlert();
+    } catch { /* alarm failure shouldn't block dispatch UX */ }
+
+    // ④ Create a live-tracking session in the background — non-blocking
     setTrackingUrl(null);
     setTrackLoading(true);
     createTrackingSession(location, landmark).then(url => {
@@ -119,7 +130,7 @@ export default function SOSButton({ location, landmark, countryCode, onFirstTap 
       setTrackLoading(false);
     });
 
-    // ④ Notify the app that SOS was sent (opens DispatchScreen with scene photo)
+    // ⑤ Notify the app that SOS was sent (opens DispatchScreen with scene photo)
     try {
       window.dispatchEvent(new CustomEvent('roadsos:sos-sent', {
         detail: { location, landmark, countryCode, contacts, scenePhoto },
