@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WifiOff, ChevronDown, AlertTriangle } from 'lucide-react';
+import { WifiOff } from 'lucide-react';
 import { useLocation } from './hooks/useLocation';
 import { useNetwork } from './hooks/useNetwork';
 import { searchNearby } from './utils/overpass';
@@ -9,14 +9,13 @@ import { saveSearchResult, loadSearchResult } from './utils/offlineDB';
 import { getEmergencyNumbers } from './utils/emergencyNumbers';
 import { hasMedicalId } from './utils/medicalId';
 import { autoFireSos } from './utils/sosDispatch';
-import { buildBundledSearchResult, BUNDLED_FACILITY_COUNT } from './utils/bundledFacilities';
+import { buildBundledSearchResult } from './utils/bundledFacilities';
 
 import CountryEmergency from './components/CountryEmergency';
 import ContactList from './components/ContactList';
 import SOSButton from './components/SOSButton';
 import TriageModal from './components/TriageModal';
 import CrashAlert from './components/CrashAlert';
-// LocationCard.jsx exists but is unused — MapHero handles location display
 import OfflineBanner from './components/OfflineBanner';
 import RoutePlanner from './components/RoutePlanner';
 import MedicalIdModal from './components/MedicalIdModal';
@@ -339,8 +338,6 @@ export default function App() {
     requestMotionPermission();
   }, []);
 
-  const countryName = numbers?.country || 'India';
-
   // GPS lost detection — use cached location flag when no live GPS
   const gpsLost = !activeLocation?.lat && !!gpsError;
 
@@ -377,90 +374,6 @@ export default function App() {
         searchLoading={searchLoading}
         usingFallbackData={!!searchData && !searchHasRealData}
       />
-
-      {/* ── (Legacy) Sticky Telemetry Header — kept hidden by CSS .has-map-hero override ── */}
-      <header className="telemetry-header">
-        <div className="telemetry-block">
-          <div className="telemetry-glow" />
-          <div className="telemetry-content">
-            {/* Top Section */}
-            <div className="telemetry-top">
-              <div className="telemetry-brand">
-                <svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-                  <path d="M24 4L6 10V22C6 31.3 13.7 40 24 44C34.3 40 42 31.3 42 22V10L24 4Z" fill="#3b82f6" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round"/>
-                  <path d="M10 26 H 18 L 22 14 L 26 36 L 30 26 H 38" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <div style={{ fontSize: '22px', fontWeight: 900, letterSpacing: '-0.05em', display: 'flex', alignItems: 'center' }}>
-                  <span style={{ color: '#f8fafc' }}>Road</span>
-                  <span style={{ color: '#3b82f6' }}>SOS</span>
-                </div>
-                {DEMO_MODE && <span className="demo-badge" style={{ marginLeft: 4 }}>🧪 DEMO</span>}
-              </div>
-              
-              <div className="telemetry-status">
-                <div className="header-actions" style={{ marginRight: 6 }}>
-                  <button className="plan-trip-btn" onClick={() => setRoutePlannerOpen(true)} title={`Pre-cache emergency contacts along your route (${BUNDLED_FACILITY_COUNT} facilities bundled offline)`}>
-                    🗺 Plan Trip
-                  </button>
-                  <button
-                    className={`medical-id-btn ${medicalIdConfigured ? 'medical-id-btn--set' : ''}`}
-                    onClick={() => setMedicalOpen(true)}
-                    title={medicalIdConfigured ? 'View / edit your Medical ID' : 'Set up your Medical ID'}
-                  >
-                    🆔 ID{!medicalIdConfigured ? ' ●' : ''}
-                  </button>
-                  {DEMO_MODE && (
-                    <button className="test-crash-btn" onClick={() => setCrashOpen(true)} title={t('tooltip.test_crash', 'Test crash alert')}>
-                      <AlertTriangle size={12} strokeWidth={2.5} style={{ marginRight: 4 }} />
-                      TEST CRASH
-                    </button>
-                  )}
-                </div>
-
-                <div className="telemetry-ping-container">
-                  <span className={`telemetry-ping ${!isOnline ? 'offline' : ''}`} />
-                  <span className={`telemetry-ping-dot ${!isOnline ? 'offline' : ''}`} />
-                </div>
-                {DEMO_MODE ? (
-                  <div className="gps-dropdown-wrapper">
-                    <span className="telemetry-status-text">
-                      {isOnline ? (demoIdx === 0 ? 'MY GPS ACTIVE' : DEMO_LOCATIONS[demoIdx].label) : 'OFFLINE MODE'}
-                    </span>
-                    <ChevronDown size={12} color="#9ca3af" />
-                    <select className="gps-dropdown-select" value={demoIdx} onChange={(e) => setDemoIdx(Number(e.target.value))}>
-                      <option disabled>📍 GPS</option>
-                      {DEMO_LOCATIONS.map((d, i) => <option key={i} value={i}>{d.label}</option>)}
-                    </select>
-                  </div>
-                ) : (
-                  <span className="telemetry-status-text">
-                    {isOnline ? 'MY GPS ACTIVE' : 'OFFLINE MODE'}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Bottom Section: Location */}
-            <div className="telemetry-bottom">
-              <div className="telemetry-icon">
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-              </div>
-              <div className="telemetry-details">
-                <p className="telemetry-address">
-                  {(searchLoading && !searchData) ? 'Connecting to GPS...' : (searchData?.landmark || 'Finding nearest landmark...')}
-                </p>
-                <p className="telemetry-coords">
-                  {activeLocation ? `Lat: ${activeLocation.lat.toFixed(4)} • Lon: ${activeLocation.lon.toFixed(4)}` : 'Waiting for signal...'}
-                  {` • ${countryName}`}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* ── Offline banner (self-contained, uses useNetwork internally) ── */}
       <OfflineBanner />

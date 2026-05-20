@@ -62,7 +62,7 @@ export async function updateTrackingSession(trackingUrl, location, landmark) {
     // Extract token from the URL's last path segment
     const token = trackingUrl.split('/').pop();
     const patchUrl = trackingUrl.replace(/\/track\/[^/]+$/, `/track/${token}`);
-    await fetch(patchUrl.replace('/track/', '/track/').replace(token, token), {
+    await fetch(patchUrl, {
       method : 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body   : JSON.stringify({

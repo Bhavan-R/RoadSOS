@@ -58,6 +58,9 @@ SEARCH_QUERIES: list[tuple[str | None, str | None, str]] = [
     ("police", None, "police"),
     ("car_repair", None, "repair"),
     ("fire_station", None, "ambulance"),
+    # Showroom — Google's native types for car dealerships
+    ("car_dealer", None, "showroom"),
+    ("automobile_dealer", None, "showroom"),
     # Keyword queries for categories Google has no native type for
     (None, "tyre puncture repair", "tyre"),
     (None, "puncture wala tire shop", "tyre"),  # Indian colloquial — catches more local shops

@@ -110,6 +110,8 @@ def build_overpass_query(lat: float, lon: float, radius: int) -> str:
   node["amenity"="car_repair"](around:{radius},{c});
   node["shop"="tyres"](around:{radius},{c});
   way["shop"="tyres"](around:{radius},{c});
+  node["shop"="tyre"](around:{radius},{c});
+  way["shop"="tyre"](around:{radius},{c});
   node["shop"="car"](around:{radius},{c});
   way["shop"="car"](around:{radius},{c});
   node["shop"="car_parts"](around:{radius},{c});
