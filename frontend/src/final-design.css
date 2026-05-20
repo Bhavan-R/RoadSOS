@@ -401,9 +401,9 @@
   border-left-color: var(--rs-slate-400) !important;
 }
 
-/* Hide AI banner inline (we'll redesign it) */
+/* AI reason banner — column 2 only so it never overlaps the absolute KM block */
 .svc-ai {
-  grid-column: 1 / -1;
+  grid-column: 2 / 3;
   font-family: var(--rs-font-display);
   font-size: 11px;
   font-weight: 700;
@@ -2040,6 +2040,19 @@
   flex-direction: column;
   gap: 16px;
   overflow-y: auto;
+}
+.lang-picker-compat-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #92400e;
+  font-weight: 500;
 }
 .lang-picker-header {
   display: flex;

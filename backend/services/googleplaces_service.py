@@ -341,7 +341,7 @@ async def search_nearby_places(
                 if keyword:
                     params["keyword"] = keyword
                 resp = await client.get(NEARBY_URL, params=params)
-                return resp.json().get("results", [])[:8]
+                return resp.json().get("results", [])[:20]
             except Exception as exc:
                 query_label = place_type or keyword or "unknown"
                 logger.warning(f"Google Places nearby query failed for {query_label}: {exc}")
