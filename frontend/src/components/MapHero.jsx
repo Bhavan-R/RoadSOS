@@ -151,8 +151,7 @@ export default function MapHero({
     <div className="map-hero">
       {/* Real GPS-anchored map (Leaflet + OSM)
           - draggable: user can pan/pinch to explore
-          - countryCode drives the Survey-of-India boundary overlay
-            when the user is in India (full J&K + Aksai Chin shown) */}
+          - countryCode passed through for future locale-aware styling */}
       <RealMap
         ref={mapRef}
         location={location}

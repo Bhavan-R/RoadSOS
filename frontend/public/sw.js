@@ -12,7 +12,7 @@ precacheAndRoute(self.__WB_MANIFEST || []);
 // Note: in production the API lives on a different origin (Render). Service
 // Workers ONLY intercept same-origin requests by default — so the runtime
 // API offline story is handled by:
-//   1. localStorage in `offlineDB.js` (geo-keyed, 24h TTL) — the real cache
+//   1. localStorage in `offlineDB.js` (geo-keyed, 7-day TTL) — the real cache
 //   2. Client-side rule-based triage in `googlePlaces.js` — works zero-network
 //   3. Bundled emergency-numbers map (`emergencyNumbers.js`) — always available
 //

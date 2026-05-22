@@ -42,37 +42,3 @@ export function clearCache() {
     // silent
   }
 }
-
-/**
- * Get offline fallback for nearby cities when online search is unavailable.
- * Uses precompiled 200-city dataset as last-resort when no cached results nearby.
- * Distance calculated via haversine; returns up to 10 closest cities with emergency #s.
- */
-export async function getOfflineNearestCities(lat, lon, maxResults = 10) {
-  try {
-    const response = await fetch('/data/offline_cities_fallback.json');
-    if (!response.ok) return [];
-    const { cities } = await response.json();
-    
-    // Calculate distances using Haversine formula
-    const R = 6371; // Earth's radius in km
-    const nearby = cities
-      .map(city => {
-        const dLat = (city.lat - lat) * (Math.PI / 180);
-        const dLon = (city.lon - lon) * (Math.PI / 180);
-        const a =
-          Math.sin(dLat / 2) ** 2 +
-          Math.cos(lat * (Math.PI / 180)) *
-            Math.cos(city.lat * (Math.PI / 180)) *
-            Math.sin(dLon / 2) ** 2;
-        const distance = R * 2 * Math.asin(Math.sqrt(a));
-        return { ...city, distance };
-      })
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, maxResults);
-    
-    return nearby;
-  } catch {
-    return []; // Fallback gracefully
-  }
-}

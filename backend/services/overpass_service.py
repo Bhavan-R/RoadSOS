@@ -11,7 +11,8 @@ Category coverage is aligned with the IIT Madras Road Safety Hackathon 2026
 ambulance services, towing services, puncture shops (tyre), and showrooms.
 
 Reliability hardening:
-- 3-attempt retry with exponential backoff on Overpass failure
+- 3-mirror failover (kumi.systems → de → fr) with 4 s per-attempt timeout,
+  sized to fit inside the 13 s wall-clock budget in search_service.py
 - Proximity-based deduplication (50 m radius) so the same hospital tagged
   by both `amenity=hospital` and `healthcare=hospital` appears once
 - Entries that have neither a useful name NOR a dialable phone are dropped
@@ -37,8 +38,8 @@ OVERPASS_FALLBACK_URLS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.openstreetmap.fr/api/interpreter",
 ]
-OVERPASS_TIMEOUT = 12.0  # reduced from 30s: fail-fast on slow endpoints, mirrors provide fallback
-OVERPASS_RETRIES = 3
+OVERPASS_TIMEOUT = 4.0  # per-attempt: must be << OVERPASS_BUDGET_S so mirror failover actually fits
+OVERPASS_RETRIES = 1  # one shot per mirror — wall-clock budget kills additional retries anyway
 DEDUP_RADIUS_M = 50  # 50-metre clustering radius
 
 CATEGORY_MAP: list[tuple[tuple[str, str], str]] = [

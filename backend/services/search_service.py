@@ -72,7 +72,9 @@ def deduplicate(contacts: list[dict]) -> list[dict]:
 # beyond any reasonable frontend timeout.  A partial result is always
 # better than no result.
 GEOCODE_BUDGET_S = 5.0
-OVERPASS_BUDGET_S = 10.0
+OVERPASS_BUDGET_S = (
+    13.0  # 4s × 3 mirrors + jitter — must exceed (TIMEOUT × MIRRORS) to allow real failover
+)
 GOOGLE_BUDGET_S = 12.0
 ENRICH_BUDGET_S = 5.0  # reduced from 10.0: 3 lookups typically finish in <2 s
 
