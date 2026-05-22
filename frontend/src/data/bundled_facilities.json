@@ -263,6 +263,67 @@
   },
 
   {
+    "id": "bf-gmch-guwahati",
+    "name": "Gauhati Medical College Hospital (GMCH)",
+    "category": "hospital",
+    "lat": 26.1785,
+    "lon": 91.7396,
+    "phone": "+91 361 252 7182",
+    "country_code": "IN",
+    "notes": "Largest government hospital in Assam, 24/7 trauma"
+  },
+  {
+    "id": "bf-aiims-guwahati",
+    "name": "AIIMS Guwahati",
+    "category": "hospital",
+    "lat": 26.1308,
+    "lon": 91.6742,
+    "phone": "+91 361 2332 100",
+    "country_code": "IN",
+    "notes": "Central government hospital, emergency department"
+  },
+  {
+    "id": "bf-gnrc-guwahati",
+    "name": "GNRC Hospital, Dispur, Guwahati",
+    "category": "hospital",
+    "lat": 26.1226,
+    "lon": 91.7974,
+    "phone": "+91 361 233 7777",
+    "country_code": "IN",
+    "notes": "Multi-specialty, 24/7 emergency"
+  },
+  {
+    "id": "bf-amch-dibrugarh",
+    "name": "Assam Medical College Hospital, Dibrugarh",
+    "category": "hospital",
+    "lat": 27.4717,
+    "lon": 94.9147,
+    "phone": "+91 373 232 0649",
+    "country_code": "IN",
+    "notes": "Major referral hospital for East Assam"
+  },
+  {
+    "id": "bf-jorhat-mc",
+    "name": "Jorhat Medical College Hospital",
+    "category": "hospital",
+    "lat": 26.7508,
+    "lon": 94.2207,
+    "phone": "+91 376 232 0444",
+    "country_code": "IN",
+    "notes": "Central Assam referral hospital"
+  },
+  {
+    "id": "bf-silchar-mc",
+    "name": "Silchar Medical College Hospital",
+    "category": "hospital",
+    "lat": 24.8388,
+    "lon": 92.7969,
+    "phone": "+91 3842 262 046",
+    "country_code": "IN",
+    "notes": "Barak Valley tertiary care"
+  },
+
+  {
     "id": "bf-mass-general-boston",
     "name": "Massachusetts General Hospital, Boston",
     "category": "hospital",
