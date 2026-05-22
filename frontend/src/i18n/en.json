@@ -8,7 +8,7 @@
   "location.cached": "cached",
   "status.online": "ONLINE",
   "status.offline": "OFFLINE",
-  "status.connecting": "Connecting…",
+  "status.connecting": "Waking server…",
   "sos.send": "SOS — Send Location",
   "sos.waiting": "SOS — Waiting for GPS",
   "sos.sent": "Location Sent",

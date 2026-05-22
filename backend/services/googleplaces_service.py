@@ -13,13 +13,13 @@ from __future__ import annotations
 import asyncio
 import itertools
 import logging
-import math
 import os
 
 import httpx
 from unidecode import unidecode
 
 from services.cache import google_cache, location_key
+from services.geo_utils import haversine
 from services.phone_utils import normalize_phone
 
 logger = logging.getLogger(__name__)
@@ -148,17 +148,6 @@ IRRELEVANT_TYPES: set[str] = {
 def _is_irrelevant(types: list[str]) -> bool:
     """Return True if the place's types indicate it's clearly not emergency-related."""
     return bool(IRRELEVANT_TYPES.intersection(types))
-
-
-def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-    )
-    return R * 2 * math.asin(math.sqrt(a))
 
 
 def map_google_types(types: list[str]) -> str | None:

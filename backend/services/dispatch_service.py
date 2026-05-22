@@ -17,6 +17,8 @@ import httpx
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from services.gemini_utils import extract_gemini_text
+
 logger = logging.getLogger(__name__)
 
 dispatch_router = APIRouter()
@@ -63,17 +65,6 @@ def _template_summary(req: DispatchRequest) -> str:
     )
 
 
-def _extract_gemini_text(response_json: dict) -> str:
-    candidates = response_json.get("candidates") or []
-    if not candidates:
-        return ""
-    content = candidates[0].get("content") or {}
-    parts = content.get("parts") or []
-    if not parts:
-        return ""
-    return (parts[0].get("text") or "").strip()
-
-
 @dispatch_router.post("/dispatch-summary", summary="Generate a dispatcher-friendly spoken summary")
 async def dispatch_summary(req: DispatchRequest):
     fallback = _template_summary(req)
@@ -109,7 +100,7 @@ async def dispatch_summary(req: DispatchRequest):
             r.raise_for_status()
             response_json = r.json()
 
-        summary = _extract_gemini_text(response_json)
+        summary = extract_gemini_text(response_json)
         if not summary:
             raise ValueError("Empty AI summary")
         return {"summary": summary, "source": "ai"}

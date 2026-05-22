@@ -21,11 +21,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import math
 
 import httpx
 
 from services.cache import location_key, overpass_cache
+from services.geo_utils import haversine
 from services.hours_parser import parse_is_open
 from services.phone_utils import is_dialable, normalize_phone
 
@@ -61,18 +61,6 @@ CATEGORY_MAP: list[tuple[tuple[str, str], str]] = [
     (("shop", "car"), "showroom"),
     (("shop", "car_parts"), "showroom"),
 ]
-
-
-def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Great-circle distance in kilometres."""
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-    )
-    return R * 2 * math.asin(math.sqrt(a))
 
 
 def classify_element(tags: dict) -> str | None:

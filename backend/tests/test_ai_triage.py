@@ -8,10 +8,10 @@ it doesn't change correctness.
 """
 
 from services.ai_triage import (
-    _extract_gemini_text,
     _validate_ai_result,
     rule_based_triage,
 )
+from services.gemini_utils import extract_gemini_text as _extract_gemini_text
 
 CONTACTS = [
     {"id": "1", "name": "Apollo Hospital", "category": "hospital", "distance": 2.3},

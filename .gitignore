@@ -238,7 +238,12 @@ Thumbs.db
 
 .vercel
 .env*.local
-docs/*.log
+
+# LaTeX build artifacts (output of scripts/build_submission_tex.py)
 docs/*.aux
+docs/*.log
 docs/*.toc
 docs/*.out
+docs/*.fls
+docs/*.fdb_latexmk
+docs/*.synctex.gz

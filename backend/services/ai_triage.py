@@ -21,6 +21,8 @@ import re
 
 import httpx
 
+from services.gemini_utils import extract_gemini_text
+
 logger = logging.getLogger(__name__)
 
 # Gemini 2.0 Flash — current free-tier default with the highest free quota.
@@ -101,24 +103,6 @@ def _validate_ai_result(result: object, original_count: int) -> dict | None:
     return result
 
 
-def _extract_gemini_text(response_json: dict) -> str:
-    """Pull the model's text response out of Gemini's nested envelope.
-
-    Gemini returns:
-      { "candidates": [
-          { "content": { "parts": [ { "text": "..." } ] } }
-      ] }
-    """
-    candidates = response_json.get("candidates") or []
-    if not candidates:
-        return ""
-    content = candidates[0].get("content") or {}
-    parts = content.get("parts") or []
-    if not parts:
-        return ""
-    return (parts[0].get("text") or "").strip()
-
-
 async def prioritize_contacts(injured: bool, blocking: bool, contacts: list[dict]) -> dict:
     if not contacts:
         return {"contacts": [], "reason": "No nearby services found"}
@@ -176,7 +160,7 @@ async def prioritize_contacts(injured: bool, blocking: bool, contacts: list[dict
             r.raise_for_status()
             response_json = r.json()
 
-        raw = _extract_gemini_text(response_json)
+        raw = extract_gemini_text(response_json)
         if not raw:
             logger.warning("AI returned empty response · using rule-based fallback")
             return rule_based_triage(injured, blocking, contacts)
