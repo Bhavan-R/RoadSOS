@@ -1,8 +1,8 @@
 const CACHE_KEY_PREFIX = 'roadsos_cache_';
-const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — hospitals don't move; stale-local beats fresh-foreign
 
 function locationKey(lat, lon) {
-  // Round to 2 decimal places (~1.1km grid)
+  // Round to 2 decimal places (~1.1 km grid — high hit rate for same-area revisits)
   return `${CACHE_KEY_PREFIX}${lat.toFixed(2)}_${lon.toFixed(2)}`;
 }
 

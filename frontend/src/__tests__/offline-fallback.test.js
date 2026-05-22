@@ -71,12 +71,12 @@ describe('Tier 2 — localStorage cache (network-out, recently visited)', () => 
     expect(loadSearchResult(13.05, 77.59)).toBeNull();
   });
 
-  it('expires entries older than 24 hours', () => {
+  it('expires entries older than 7 days', () => {
     saveSearchResult(12.97, 77.59, SAMPLE_RESULT);
     // Tamper with the timestamp to simulate aging — read raw, mutate, write back
     const key = 'roadsos_cache_12.97_77.59';
     const raw = JSON.parse(localStorage.getItem(key));
-    raw.timestamp = Date.now() - (25 * 60 * 60 * 1000);  // 25h ago
+    raw.timestamp = Date.now() - (8 * 24 * 60 * 60 * 1000);  // 8 days ago
     localStorage.setItem(key, JSON.stringify(raw));
 
     expect(loadSearchResult(12.97, 77.59)).toBeNull();

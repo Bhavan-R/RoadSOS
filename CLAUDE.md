@@ -102,7 +102,7 @@ The rulebook specifies these exact criteria — every code decision must serve a
 | Google Places fires in parallel with OSM | Reduces wall-clock from sequential sum to `max(osm, google)` — saves 10+ s in rural areas |
 | `rankby=distance` (not `radius`) in Google | Returns nearest contact first, not most-prominent |
 | Overpass timeout 12s (not 30s) | Fail-fast forces mirror failover; per-phase budget controls total time |
-| Cache precision 3 decimal places (~110m) | Higher cache hit rate during demos; still precise enough for emergency services |
+| Cache precision 2 decimal places (~1.1km) | Higher cache hit rate during demos; still precise enough for emergency services |
 | `ENRICH_BUDGET_S = 5` (not 10) | 3 phone enrichment lookups finish in <2s; 10s was just burning time |
 | Coarse GPS fix before high-accuracy watch | Shows something on map in ~1–2s instead of waiting 45s for GPS lock |
 | `refreshGpsLocation()` via event bus | Refresh button actually updates React state (old version just toggled spinner) |
