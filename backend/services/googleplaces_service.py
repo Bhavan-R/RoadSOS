@@ -58,9 +58,9 @@ SEARCH_QUERIES: list[tuple[str | None, str | None, str]] = [
     ("police", None, "police"),
     ("car_repair", None, "repair"),
     ("fire_station", None, "ambulance"),
-    # Showroom — Google's native types for car dealerships
-    ("car_dealer", None, "showroom"),
-    ("automobile_dealer", None, "showroom"),
+    # Showroom — keyword search gives better precision than the loose
+    # car_dealer / automobile_dealer types, which return tours, HVAC, etc.
+    (None, "car showroom dealership", "showroom"),
     # Keyword queries for categories Google has no native type for
     (None, "tyre puncture repair", "tyre"),
     (None, "puncture wala tire shop", "tyre"),  # Indian colloquial — catches more local shops
@@ -86,6 +86,38 @@ TYPE_CATEGORY_MAP = {
 # `rankby=distance` sometimes returns loosely matched businesses (e.g.
 # a fashion boutique tagged as "car_repair" by the owner for SEO).
 # If ANY of these types appear in a place's type list, discard the place.
+# Name substrings (lowercased) that indicate a place is NOT a useful
+# emergency contact — e.g. teleconsult kiosks, virtual clinics, corporate
+# offices that Google mis-categorises as hospitals/dealerships.
+JUNK_NAME_PATTERNS: list[str] = [
+    "tele-consult",
+    "teleconsult",
+    "telemedicine",
+    "online consult",
+    "virtual clinic",
+    "24|7 doctor",
+    "24/7 doctor",
+    "pathology",
+    "diagnostic",
+    "lab ",
+    " lab",
+    "pharmacy",
+    "chemist",
+    "medical store",
+    "medplus",
+    "med plus",
+    "apollo pharmacy",
+    "netmeds",
+    "1mg",
+]
+
+
+def _is_junk_name(name: str) -> bool:
+    """Return True if the place name indicates it's not useful for emergencies."""
+    low = name.lower()
+    return any(pat in low for pat in JUNK_NAME_PATTERNS)
+
+
 IRRELEVANT_TYPES: set[str] = {
     "clothing_store",
     "shoe_store",
@@ -359,6 +391,10 @@ async def search_nearby_places(
                     logger.debug(
                         "Skipping irrelevant place: %s (types: %s)", place.get("name"), place_types
                     )
+                    continue
+                place_name = place.get("name", "")
+                if _is_junk_name(place_name):
+                    logger.debug("Skipping junk-name place: %s", place_name)
                     continue
                 category = map_google_types(place_types) or fallback_category
                 if not category:

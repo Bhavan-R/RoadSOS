@@ -21,7 +21,7 @@ export default function ContactCard({ contact, isLast }) {
   const callHref   = phoneClean ? `tel:${phoneClean}` : null;
 
   const mapsHref = (typeof lat === 'number' && typeof lon === 'number')
-    ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&destination_place_id=${encodeURIComponent(name || '')}`
+    ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
     : null;
 
   const cat = (category || 'repair').toLowerCase();
