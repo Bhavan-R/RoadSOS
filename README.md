@@ -612,6 +612,21 @@ Every item here was considered, prototyped on paper, and rejected for a specific
 | **Reliability hardening** | Every upstream call wrapped in `_safe_*` helper. API never returns 5xx for upstream failure — degrades to empty contacts with transparent `source`. Three-mirror Overpass with exponential backoff (overpass-api.de → kumi.systems → openstreetmap.fr). Multi-key Google Places rotation. Per-IP rate limiting (30/min `/search`, 20/min `/triage`). |
 
 ---
+## 📞 Team Contacts
+
+### Bhavan R — Team Lead  
+📧 bhavan@example.com  
+🔗 https://github.com/Bhavan-R  
+
+### Meriyan Joe J — Frontend Developer  
+📧 meriyanjoe@gmail.con  
+
+### Vijay Thiruparar A — Backend Developer  
+📧 vijaythiruparar123@gmail.com  
+
+### Mukil P — Research & Testing  
+📧 mukilp487@gmail.com  
+---
 
 ## 📄 License
 
