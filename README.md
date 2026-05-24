@@ -615,8 +615,7 @@ Every item here was considered, prototyped on paper, and rejected for a specific
 ## 📞 Team Contacts
 
 ### Bhavan R — Team Lead  
-📧 bhavan@example.com  
-🔗 https://github.com/Bhavan-R  
+📧 bhavan@example.com    
 
 ### Meriyan Joe J — Frontend Developer  
 📧 meriyanjoe@gmail.con  
